@@ -1,0 +1,49 @@
+# Summary:
+# input_integer_register_0 : seqnr of latest update
+# input_integer_register_1 : 1: stop robot
+# input_double_register_0 : base_rad
+# input_double_register_1 : shoulder_rad
+# input_double_register_2 : elbow_rad
+# input_double_register_3 : wrist1_rad
+# input_double_register_4 : wrist2_rad
+# input_double_register_5 : wrist3_rad
+# input_double_register_6 : speed
+# input_double_register_7 : acceleration
+
+def rtde_prog():
+    textmsg("Allright v3")
+    cmd=0
+    seqnr=0
+    base=0.0
+    shoulder=-1.57
+    elbow=0.0
+    wrist1=-1.57
+    wrist2=0
+    wrist3=0
+    acceleration=0.5
+    speed=0.75
+    movej([base,shoulder,elbow,wrist1,wrist2,wrist3], a=acceleration, v=speed, r=0)
+    keep_running=True
+    while keep_running:
+        seqnr=read_input_integer_register(0)
+        cmd=read_input_integer_register(1)
+	if cmd==1:
+	   keep_running=False
+	elif cmd==2:
+	   # textmsg("Position update received")
+	   base=read_input_float_register(0)
+           shoulder=read_input_float_register(1)
+           elbow=read_input_float_register(2)
+           wrist1=read_input_float_register(3)
+           wrist2=read_input_float_register(4)
+           wrist3=read_input_float_register(5)
+           speed=read_input_float_register(6)
+           acceleration=read_input_float_register(7)
+           movej([base,shoulder,elbow,wrist1,wrist2,wrist3], a=acceleration, v=speed, r=0)
+	end
+	write_output_integer_register(0, seqnr)
+	sync()
+    end
+    textmsg("Closing down robot")
+end
+run program

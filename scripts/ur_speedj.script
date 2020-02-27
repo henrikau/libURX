@@ -1,0 +1,82 @@
+# Summary:
+# input_integer_register_0 : seqnr of latest update
+# input_integer_register_1 : 1: stop robot
+# input_double_register_0 : base_rad/s
+# input_double_register_1 : shoulder_rad/s
+# input_double_register_2 : elbow_rad/s
+# input_double_register_3 : wrist1_rad/s
+# input_double_register_4 : wrist2_rad/s
+# input_double_register_5 : wrist3_rad/s
+def speedj_rtde_prog():
+    textmsg("speedj v3")
+    global is_speeding = 0
+    global speed_thrd = 0
+    global tqd = [0, 0, 0, 0, 0, 0]
+    global keep_running = False
+    global updated_tqd = False
+
+    thread speed_thread():
+    	qd = [0,0,0,0,0,0]
+        while keep_running:
+    	    enter_critical
+    	    if updated_tqd == True:
+    	        qd = tqd
+    		updated_tqd = False
+    	    end
+    	    exit_critical
+            speedj(qd, a=0.75, t=0.05)
+    	    sync()
+        end
+    	stopj(2)
+    end
+
+    cmd=0
+    seqnr=0
+
+    keep_running=True
+    seqnr=read_input_integer_register(0)
+    old_seqnr = seqnr - 1
+    while keep_running:
+        seqnr=read_input_integer_register(0)
+        # if seqnr == old_seqnr:
+        #     continue
+        old_seqnr = seqnr
+        cmd=read_input_integer_register(1)
+    	if cmd==1:
+    	   textmsg("Stop-command received")
+    	   enter_critical
+    	   keep_running=False
+    	   tqd = [0, 0, 0, 0, 0, 0]
+    	   exit_critical
+    	elif cmd==2:
+    	   qd = [0, 0, 0, 0, 0, 0]
+    	   qd[0] = read_input_float_register(0) # base
+           qd[1] = read_input_float_register(1) # shoulder
+           qd[2] = read_input_float_register(2) # elbow
+           qd[3] = read_input_float_register(3) # w1
+           qd[4] = read_input_float_register(4) # w2
+           qd[5] = read_input_float_register(5) # w3
+
+    	   enter_critical
+    	   tqd = qd
+    	   updated_tqd = True
+    	   exit_critical
+
+    	   if is_speeding == 0:
+               is_speeding = 1
+    	       if speed_thrd == 0:
+    	       	  textmsg("spawning new thread")
+    		  speed_thrd = run speed_thread()
+    	       end
+    	   end
+    	elif cmd==3:
+            textmsg("Stop-command received")
+    	    keep_running = False
+            is_speeding = 0
+    	end
+    	write_output_integer_register(0, seqnr)
+    	sync()
+    end
+    textmsg("Closing down robot")
+end
+run program

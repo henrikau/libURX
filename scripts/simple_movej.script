@@ -1,0 +1,13 @@
+def rtde_prog():
+    seqnr=0
+    base=-2.356194
+    shoulder=-2.356194
+    elbow=1.919862
+    wrist1=0.0
+    wrist2=1.570796
+    wrist3=1.919862
+    acceleration=0.5
+    speed=0.75
+    movej([base,shoulder,elbow,wrist1,wrist2,wrist3], a=acceleration, v=speed, r=0)
+end
+run program
