@@ -22,4 +22,4 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/simple_movej.script
   ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 
 # install sample UR-scripts
-install (FILES ../scripts/simple_movej.script DESTINATION usr/share/liburx)
+install (FILES ../scripts/simple_movej.script DESTINATION share/liburx)
