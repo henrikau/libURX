@@ -7,8 +7,9 @@ set (PROJECT_URL "http://localhost/")
 set (PROJECT_LICENSE "MPLv2")
 set (PROJECT_VERSION "1.0")
 
-
 option(BUILD_TESTS    "Build tests and emulators" ON)
+option(ALT_LIBS  "Alternative location for libraries" OFF)
+
 enable_testing ()
 
 include (CheckCXXCompilerFlag REQUIRED)
@@ -29,6 +30,9 @@ set_cxx_flag("-Wextra")
 set_cxx_flag("-Werror")
 set_cxx_flag("-Wfatal-errors")
 set_cxx_flag("-std=c++17")
+
+# FIXME: want to enable this, but this will hit you *hard*
+# set_cxx_flag("-fsanitize=address")
 
 check_cxx_compiler_flag ("-fpic" CXX_SUPPORT_FPIC_1)
 check_cxx_compiler_flag ("-fPIC" CXX_SUPPORT_FPIC_2)
