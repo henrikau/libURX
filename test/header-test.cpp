@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
     strncat(dst, pl3.c_str(), pl3.length());
     resp->hdr.size = htons(sizeof(*resp) + pl3.length());
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
-
+    free(resp);
 }
 
 BOOST_AUTO_TEST_CASE(test_data_package_resp_variables)
