@@ -16,36 +16,14 @@ if [[ -z ${dirs} ]]; then
     exit 1
 fi
 
-inotifywait -m ${dirs} -e modify -e create --exclude "\#" |
-    while read path action file; do
-	echo "path: ${path} action: ${action} file: ${file}"
-	pushd build > /dev/null
-	case "${action}" in
-	    MODIFY)
-		case ${file} in
-		    CMakeLists.txt)
-			echo "${path}/${file} updated, trigger full rebuild"
-			cmake .. -DBUILD_TESTS=ON
-			make clean && make -j8 && make test
-			;;
-		    *)
-			time make -j8 && time make test
-			;;
-		esac
-		;;
-	    CREATE)
-		case ${file} in
-		    CMakeLists.txt)
-			echo "[C] ${path}/${file} created, trigger full rebuild"
-			cmake .. -DBUILD_TESTS=ON && make clean && time make -j8 && time make test
-			;;
-		    *)
-			time make -j8 && time make test
-			;;
-		esac
-		echo "{file} - something else"
-		;;
-	esac
-	popd > /dev/null
-    done
-popd > /dev/null
+while inotifywait -e modify -e create --exclude "\#" ${dirs} ; do
+    ./scripts/build.sh -f -t
+    # do a refresh-scan of tracked files
+    dirs=$(for f in $(find . -name "*.[c|h][pp]?" -o -name "CMakeLists.txt"); do dirname ${f}; done|grep -v build|sort|uniq|tr '\n' ' ')
+    if [[ -z ${dirs} ]]; then
+	echo "Could not find any source-files, try to move to the root of the project!"
+	exit 1
+    fi
+    echo "Updating TAGS..."
+    find . -name "*" -type f -print | etags  -
+done
