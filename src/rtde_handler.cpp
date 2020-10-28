@@ -10,6 +10,23 @@
 #include <unistd.h>
 #include <string.h>
 #include <iostream>
+#include <sched.h>
+#include <linux/sched.h>
+
+struct sched_attr {
+        uint32_t size;
+        uint32_t sched_policy;
+        uint64_t sched_flags;
+
+        /* SCHED_NORMAL, SCHED_BATCH */
+        int32_t sched_nice;
+        /* SCHED_FIFO, SCHED_RR */
+        uint32_t sched_priority;
+        /* SCHED_DEADLINE */
+        uint64_t sched_runtime;
+        uint64_t sched_deadline;
+        uint64_t sched_period;
+};
 
 bool urx::RTDE_Handler::set_version()
 {
@@ -100,16 +117,25 @@ urx::RTDE_Handler::start()
     struct rtde_control_package_sp_resp *resp = (struct rtde_control_package_sp_resp *)buffer_;
     int sendcode = con_->do_send_recv(&cp, ntohs(cp.size), (void *)resp, (int)sizeof(*resp));
 
-    if (sendcode < 0)
+    if (sendcode < 0) {
+        std::cerr << __func__ << "() do_send() failed" << std::endl;
         return false;
-    else if (!rtde_control_package_sp_resp_validate(resp, true))
+    }
+    if (!rtde_control_package_sp_resp_validate(resp, true)) {
+        std::cerr << __func__ << "() invalid response received, won't start." << std::endl;
         return false;
+    }
 
     return resp->accepted;
 }
+
 bool
 urx::RTDE_Handler::stop()
 {
+    if (tsn_mode)
+        proxy_running = false;
+    usleep(10000);
+
     struct rtde_header cp;
     rtde_control_package_stop(&cp);
     struct rtde_control_package_sp_resp *resp = (struct rtde_control_package_sp_resp *)buffer_;
@@ -147,6 +173,9 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
 // Once fixed, update doc in .hpp
 bool urx::RTDE_Handler::recv()
 {
+    if (tsn_mode)
+        return false;
+
     int rcode = con_->do_recv(buffer_, 2048);
     if (rcode < 0)
         return false;
@@ -168,4 +197,92 @@ bool urx::RTDE_Handler::send(int recipe_id)
         }
     }
     return false;
+}
+
+
+bool urx::RTDE_Handler::enable_tsn_proxy(const std::string& ifname,
+                                         int prio,
+                                         const std::string& mac,
+                                         uint64_t stream_id)
+
+{
+    try {
+        socket_out = tsn::TSN_Talker::CreateTalker(prio, ifname, mac);
+        stream_out = tsn::TSN_Stream::CreateTalker(socket_out, stream_id, true);
+    } catch (std::runtime_error) {
+        std::cerr << __func__  << "() Creating socket and talker failed" << std::endl;
+        return false;
+    }
+
+    // FIXME: get size of recipe and notify talker
+
+    tsn_mode = true;
+    return true;
+}
+
+bool urx::RTDE_Handler::start_tsn_proxy()
+{
+    if (!tsn_mode)
+        return false;
+
+    if (!socket_out->ready()) {
+        std::cerr << __func__ << "() talker not ready, cannot start TSN Proxy" << std::endl;
+        return false;
+    }
+
+    proxy = std::thread(&urx::RTDE_Handler::tsn_proxy_worker, this);
+    {
+        std::unique_lock<std::mutex> lk(bottleneck);
+        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+        if (!tsn_cv.wait_until(lk, timeout, [&] { return proxy_running; })) {
+            std::cerr << __func__  << "() Creating proxy-worker FAILED" << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+void urx::RTDE_Handler::tsn_proxy_worker()
+{
+    if (!socket_out->ready()) {
+        tsn_cv.notify_all();
+        return;
+    }
+
+    unsigned int flags = 0;
+    struct sched_attr attr;
+    attr.size = sizeof(struct sched_attr);
+    attr.sched_flags	= 0;
+    attr.sched_nice	= 0;
+    attr.sched_priority	= 0;
+
+    attr.sched_policy	= 6; // SCHED_DEADLINE
+    attr.sched_runtime  =      500 * 1000; // 500us
+    attr.sched_deadline = 2 * 1000 * 1000;
+    attr.sched_period   = 2 * 1000 * 1000;
+    int err = syscall(314, 0, &attr, flags);
+    if (err != 0) {
+        std::cerr << __func__ << "() Failed setting deadline scheduler" << std::endl;
+        tsn_cv.notify_all();
+        return;
+    }
+
+    proxy_running = true;
+    tsn_cv.notify_all();
+
+    // signal robot controller to start stream
+    start();
+
+    // start worker, grab data and forward
+    while (proxy_running) {
+        int rcode = con_->do_recv(buffer_, 2048);
+        if (rcode < 0) {
+            proxy_running = false;
+            break;
+        }
+
+        stream_out->add_data(buffer_, rcode);
+        stream_out->send();
+    }
+    std::cout << __func__ << "() worker stopped" << std::endl;
 }

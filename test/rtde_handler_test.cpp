@@ -36,6 +36,7 @@ struct F
 
   ~F()
   {
+      delete h;
       BOOST_TEST_MESSAGE( "teardown fixture" );
   }
 
@@ -160,6 +161,7 @@ BOOST_AUTO_TEST_CASE(test_handler_recipe)
     free(resp);
 }
 
+#if 0
 // test path from creating recipe to receivng data from UR
 BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
 {
@@ -208,7 +210,7 @@ BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
     //BOOST_CHECK(h->getField<double>("timestamp") == 42.1337);
     free(resp);
 }
-
+#endif
 BOOST_AUTO_TEST_CASE(test_handler_do_start)
 {
     struct rtde_control_package_resp *resp = create_cp_resp();
@@ -385,6 +387,23 @@ BOOST_AUTO_TEST_CASE(test_handler_input_full)
     BOOST_CHECK(be32toh(*(uint32_t *)buf) == 0xdeadbeef);
     BOOST_CHECK_CLOSE(urx::double_be(*(double *)(buf+4)), 0.5, 0.00001);
     free(resp);
+}
+
+BOOST_AUTO_TEST_CASE(test_add_tsn_remote)
+{
+    struct rtde_control_package_resp *resp = create_cp_resp();
+    _set_recipe_resp(resp, "DOUBLE,VECTOR6D", 42);
+    mock->set_recvBuf((unsigned char *)resp, (int)ntohs(resp->hdr.size));
+    mock->set_sendCode(42);
+
+    urx::RTDE_Recipe *r = new urx::RTDE_Recipe();
+    double ts;
+    int32_t tq[6];
+    r->add_field("timestamp", &ts);
+    r->add_field("target_q", tq);
+
+    BOOST_CHECK(h->register_recipe(r));
+    BOOST_CHECK(h->enable_tsn_proxy("lo", 3, "01:00:5e:01:01:01", 42));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

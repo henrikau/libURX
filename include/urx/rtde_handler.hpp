@@ -10,21 +10,29 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <mutex>
+#include <thread>
+#include <atomic>
+#include <condition_variable>
 
 #include <urx/handler.hpp>
 #include <urx/header.hpp>
 #include <urx/con.hpp>
 #include <urx/rtde_recipe.hpp>
 
+#include <tsn/tsn_socket.hpp>
+#include <tsn/tsn_stream.hpp>
 namespace urx
 {
     class RTDE_Handler : public Handler
-{
+    {
 public:
 
     RTDE_Handler(Con* c) :
         Handler(c),
-        out(nullptr)
+        out(nullptr),
+        tsn_mode(false),
+        proxy_running(false)
     {
         con_->do_connect();
     };
@@ -156,12 +164,32 @@ public:
      */
     bool parse_incoming_data(struct rtde_data_package* data);
 
+    bool enable_tsn_proxy(const std::string& ifname, int prio, const std::string& mac, uint64_t stream_id);
+
+    /** Start Proxy worker
+     *
+     * It will in turn signal robot controller to start sending
+     * messages. Incoming frames will be forwarded to TSN stream.
+     */
+    bool start_tsn_proxy();
+
 private:
     RTDE_Recipe *out;
     std::unordered_map<int, RTDE_Recipe *> recipes_in;
     // URControl will return a frame of *maximum* 2000 bytes, so set
     // recv-buffer to handle that.
     unsigned char buffer_[2048];
+
+    bool tsn_mode;
+    std::shared_ptr<tsn::TSN_Talker> socket_out;
+    std::shared_ptr<tsn::TSN_Stream> stream_out;
+
+    void tsn_proxy_worker();
+
+    std::mutex bottleneck;
+    std::condition_variable tsn_cv;
+    std::thread proxy;
+    bool proxy_running;
 };
 
 }
