@@ -6,7 +6,7 @@
  * with this file, You can obtain one at https://mozilla.org/MPL/2.0/
  */
 #ifndef MOCK_RTDE_CON_HPP
-#define MOCK_CON_HPP
+#define MOCK_RTDE_CON_HPP
 #include <iostream>
 
 #include <string.h>
@@ -84,4 +84,4 @@ namespace urx {
         unsigned char *rbuf_;
     };
 }
-#endif // MOCK_CON_HPP
+#endif // MOCK_RTDE_CON_HPP
