@@ -209,12 +209,12 @@ BOOST_AUTO_TEST_CASE(test_robot_sets_version)
     urx::URX_Handler  * uh = new urx::URX_Handler(u);
     urx::RTDE_Handler * rh = new urx::RTDE_Handler(r);
     urx::Robot *rob = new urx::Robot(uh, rh);
-    (void)rob;
 
     // we should now have a set_version message for v2 in send-buffer
     struct rtde_prot *header = (struct rtde_prot *)send_buffer;
     BOOST_CHECK(header->hdr.type == RTDE_REQUEST_PROTOCOL_VERSION);
     BOOST_CHECK(header->payload.version == ntohs(2));
+    delete rob;
 }
 
 BOOST_AUTO_TEST_CASE(test_read_output_rtde)
