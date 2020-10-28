@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_SUITE(s, F)
 BOOST_AUTO_TEST_CASE(test_script_unknown_file)
 {
     urx::URX_Script urxs = urx::URX_Script("foobar");
-    BOOST_CHECK_THROW(!urxs.read_file(), std::exception);
+    BOOST_CHECK_THROW(urxs.read_file(), std::exception);
 }
 
 BOOST_AUTO_TEST_CASE(test_script_valid_file)
