@@ -8,6 +8,7 @@ set (APPS
   joint_speed
   robot_speed
   measure_roundtrip
+  log_joints
   )
 
 foreach(a ${APPS})
