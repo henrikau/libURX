@@ -116,7 +116,6 @@ bool urx::Robot::recv()
         }
         updated_state_ = true;
 
-        // std::cout << ur_state.local_ts_us.count() << "," << fixed << ur_state.ur_ts << std::endl;
         ts_log.push_back( std::tuple<std::chrono::microseconds, double>(ur_state.local_ts_us, ur_state.ur_ts) );
     }
 
@@ -156,17 +155,37 @@ urx::Robot_State urx::Robot::state(bool synchronous)
 
         if (ts_log_loc.size() > 3) {
             if (ts_log_fd) {
-                for (auto& t : ts_log_loc) {
-                    //std::cout << std::get<0>(t).count() << "," << std::fixed << std::get<1>(t) << std::endl;
+                for (auto& t : ts_log_loc)
                     fprintf(ts_log_fd, "%ld,%f\n", std::get<0>(t).count(), std::get<1>(t));
-                }
                 fflush(ts_log_fd);
+            }
 
+            if (ts_log_debug) {
                 std::chrono::microseconds first = std::get<0>(ts_log_loc[0]);
                 std::chrono::microseconds last = std::get<0>(ts_log_loc[ts_log_loc.size() - 1]);
                 long int diff_us = (last-first).count();
-                printf("------------------------------------------------------\n");
-                printf("ts_log_loc.size(): %lu, span: %ld (%f sec)\n", ts_log_loc.size(), diff_us, 1.0 * diff_us * 1e-6);
+
+                long int prev = first.count();
+                long int diff_max = 0;
+                long int diff_min = prev;
+
+                for (auto& t : ts_log_loc) {
+                    auto curr = std::get<0>(t).count();
+                    if (curr == prev)
+                        continue;
+                    auto diff = curr - prev;
+                    if (diff > diff_max)
+                        diff_max = diff;
+                    if (diff < diff_min)
+                        diff_min = diff;
+                    prev = curr;
+                }
+
+                printf("samples:: %lu, span: %ld (%f sec)", ts_log_loc.size(), diff_us, 1.0 * diff_us * 1e-6);
+                printf(" avg: %f", (double)diff_us / ts_log_loc.size());
+                printf(" max: %lu", diff_max);
+                printf(" min: %lu", diff_min);
+                printf("\n");
             }
             ts_log_loc.clear();
         }

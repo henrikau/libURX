@@ -94,7 +94,9 @@ namespace urx {
             dut_(false),
             updated_state_(false),
             last_seqnr(0),
-            ur_state(Robot_State())
+            ur_state(Robot_State()),
+            ts_log_debug(false)
+
         {
             out = new urx::RTDE_Recipe();
             in = new urx::RTDE_Recipe();
@@ -213,7 +215,7 @@ namespace urx {
         bool running();
 
         /**
-         * \breif: tag Robot as being under test.
+         * \brief: tag Robot as being under test.
          *
          * This will add delays where we would normally block from OS
          * (i.e. on recv() etc)
@@ -278,6 +280,7 @@ namespace urx {
         Robot_State ur_state;
         std::vector<std::tuple<std::chrono::microseconds, double>> ts_log;
         FILE *ts_log_fd;
+        bool ts_log_debug;
     };
 }
 #endif  // URX_ROBOT_HPP
