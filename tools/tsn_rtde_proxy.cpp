@@ -19,8 +19,14 @@ void signal_handler(int)
 
 void usage(const char *argv0)
 {
-    std::cout << "Usage: " << std::endl;
-    std::cout << argv0 << "-i UR_Controller_IPv4 [-h help]" << std::endl;
+    std::cout << "Usage: " << argv0 << "options" << std::endl;
+
+    std::cout << "    -d UR_Controller_IPv4 address" << std::endl;
+    std::cout << "    -i TSN target interface" << std::endl;
+    std::cout << "    -m TSN Destination MAC address " << std::endl;
+    std::cout << "    -p TSN stream priority " << std::endl;
+    std::cout << "    -s TSN Stream-ID " << std::endl;
+    std::cout << "    -h show this help" << std::endl;
 }
 
 void printit(double ts, double target_q[urx::END])
@@ -40,13 +46,26 @@ union d {
 
 int main(int argc, char *argv[])
 {
-    char ip4[16] = {0};
+    std::string ip4("127.0.0.1"), ifname("eth0"), dest_mac("01:00:5e:00:00:00");
+    int prio = 3, sid = 42;
     int opt;
 
-    while ((opt = getopt(argc, argv, "i:h")) != -1) {
+    while ((opt = getopt(argc, argv, "d:i:m:p:s:h")) != -1) {
         switch (opt) {
+        case 'd':
+            ip4 = optarg;
+            break;
         case 'i':
-            strncpy(ip4, optarg, 15);
+            ifname = optarg;
+            break;
+        case 'm':
+            dest_mac = optarg;
+            break;
+        case 'p':
+            prio = atoi(optarg);
+            break;
+        case 's':
+            sid = atoi(optarg);
             break;
         case 'h':
             usage(argv[0]);
@@ -56,6 +75,12 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    std::cout << "Setting up TSN RTDE Proxy:" << std::endl;
+    std::cout << "UR ip4: " << ip4 << std::endl;
+    std::cout << "TSN ifname: " << ifname << std::endl;
+    std::cout << "dest-mac: " << dest_mac << std::endl;
+    std::cout << "TSN Stream priority: " << prio << std::endl;
+    std::cout << "TSN Stream ID: " << sid << std::endl;
 
     urx::RTDE_Handler h(ip4);
     h.connect_ur();
@@ -78,14 +103,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    h.enable_tsn_proxy("eth2", 3, "01:00:5e:01:01:01", 42);
+    h.enable_tsn_proxy(ifname, prio, dest_mac, prio);
     h.start_tsn_proxy();
 
-
-    // while (running) {
+    while (running) {
         usleep(1000000);
         std::cout << "."; fflush(stdout);
-    // }
+    }
 
     h.stop();
     printf("Robot stopped\n");
