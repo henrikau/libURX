@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
     if (!h.register_recipe(&in)) {
         printf("%s: Failed adding recipe as expected\n", __func__);
-        return false;
+        return -1;
     }
     printf("Ready to start loop\n");
     h.start();
