@@ -27,6 +27,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/ur_script_movej.script
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/simple_movej.script
   ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 
+find_program (BASH_PROGRAM bash)
+if (BASH_PROGRAM)
+  add_test (set_test_file_capabilities ${BASH_PROGRAM} ${CMAKE_SOURCE_DIR}/scripts/set_props.sh)
+endif (BASH_PROGRAM)
+
 foreach(t ${TESTS})
   add_executable (${t} ${t}.cpp)
   target_link_libraries (${t} ${LIBS})
