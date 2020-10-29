@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE(test_add_tsn_remote)
     r->add_field("target_q", tq);
 
     BOOST_CHECK(h->register_recipe(r));
-    BOOST_CHECK(h->enable_tsn_proxy("lo", 3, "01:00:5e:01:01:01", 42));
+    BOOST_CHECK(h->enable_tsn_proxy("lo", 3, "01:00:5e:01:01:00", "01:00:5e:01:01:01", 42, 43));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

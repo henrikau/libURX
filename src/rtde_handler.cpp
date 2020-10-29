@@ -161,7 +161,7 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
     // expected size of buffer?
     int datasize = ntohs(data->hdr.size) - sizeof(struct rtde_data_package) + sizeof(unsigned char);
     if (out->expected_bytes() != datasize) {
-        std::cout << "mismatch between expected bytes " << out->expected_bytes()<< " and actual "<< datasize << std::endl;
+        // std::cout << "mismatch between expected bytes " << out->expected_bytes()<< " and actual "<< datasize << std::endl;
         return false;
     }
     return out->parse(&data->data);
@@ -199,13 +199,19 @@ bool urx::RTDE_Handler::send(int recipe_id)
 
 bool urx::RTDE_Handler::enable_tsn_proxy(const std::string& ifname,
                                          int prio,
-                                         const std::string& mac,
-                                         uint64_t stream_id)
+                                         const std::string& dst_mac,
+                                         const std::string& src_mac,
+                                         uint64_t sid_out,
+                                         uint64_t sid_in)
 
 {
     try {
-        socket_out = tsn::TSN_Talker::CreateTalker(prio, ifname, mac);
-        stream_out = tsn::TSN_Stream::CreateTalker(socket_out, stream_id, true);
+        socket_out = tsn::TSN_Talker::CreateTalker(prio, ifname, dst_mac);
+        stream_out = tsn::TSN_Stream::CreateTalker(socket_out, sid_out, true);
+
+        socket_in  = tsn::TSN_Listener::Create(ifname, src_mac);
+        stream_in  = tsn::TSN_Stream::CreateListener(socket_in, sid_in);
+
     } catch (std::runtime_error) {
         std::cerr << __func__  << "() Creating socket and talker failed" << std::endl;
         return false;
@@ -227,7 +233,9 @@ bool urx::RTDE_Handler::start_tsn_proxy()
         return false;
     }
 
-    proxy = std::thread(&urx::RTDE_Handler::tsn_proxy_worker, this);
+    tsn_proxy = std::thread(&urx::RTDE_Handler::tsn_worker, this);
+    rtde_proxy = std::thread(&urx::RTDE_Handler::rtde_worker, this);
+
     {
         std::unique_lock<std::mutex> lk(bottleneck);
         auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
@@ -239,9 +247,52 @@ bool urx::RTDE_Handler::start_tsn_proxy()
     return true;
 }
 
-void urx::RTDE_Handler::tsn_proxy_worker()
+void urx::RTDE_Handler::tsn_worker()
+{
+    // Grab incoming TSN frames, extract from TSN-header and forward
+    // directly to robot via rtde
+
+
+    {
+        std::unique_lock<std::mutex> lk(bottleneck);
+        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+        if (!tsn_cv.wait_until(lk, timeout, [&] { return proxy_running; })) {
+            std::cerr << __func__  << "() Creating rtde_worker FAILED, tsn_worker will abort" << std::endl;
+            return ;
+        }
+    }
+
+    unsigned int flags = 0;
+    struct sched_attr attr;
+    attr.size = sizeof(struct sched_attr);
+    attr.sched_flags	= 0;
+    attr.sched_nice	= 0;
+    attr.sched_priority	= 0;
+    attr.sched_policy	= 6; // SCHED_DEADLINE
+    attr.sched_runtime  =      500 * 1000; // 500us
+    attr.sched_deadline = 2 * 1000 * 1000;
+    attr.sched_period   = 2 * 1000 * 1000;
+    int err = syscall(314, 0, &attr, flags);
+
+    if (err != 0) {
+        std::cerr << __func__ << "() Failed setting deadline scheduler" << std::endl;
+        proxy_running = false;
+        return;
+    }
+
+    while (proxy_running) {
+        // wait for incoming tsn-frame
+        // strip tsn-header
+        // forward via rtde
+        // struct avtp_stream_pdu *pdu = (struct avtp_stream_pdu  *)buf;
+        // stream_in->recv(pdu, 1500);
+    }
+}
+
+void urx::RTDE_Handler::rtde_worker()
 {
     if (!socket_out->ready()) {
+        proxy_running = false;
         tsn_cv.notify_all();
         return;
     }
@@ -277,9 +328,10 @@ void urx::RTDE_Handler::tsn_proxy_worker()
             proxy_running = false;
             break;
         }
-
+        // printf("Got %d byts of data from ur\n", rcode);
         stream_out->add_data(buffer_, rcode);
         stream_out->send();
+        parse_incoming_data((struct rtde_data_package *)buffer_);
     }
     std::cout << __func__ << "() worker stopped" << std::endl;
 }

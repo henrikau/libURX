@@ -172,9 +172,14 @@ public:
      */
     bool parse_incoming_data(struct rtde_data_package* data);
 
-    bool enable_tsn_proxy(const std::string& ifname, int prio, const std::string& mac, uint64_t stream_id);
+        bool enable_tsn_proxy(const std::string& ifname,
+                              int prio,
+                              const std::string& dst_mac, // talker
+                              const std::string& src_mac, // listener
+                              uint64_t sid_out,
+                              uint64_t sid_in);
 
-    /** Start Proxy worker
+    /** Start Proxy workers
      *
      * It will in turn signal robot controller to start sending
      * messages. Incoming frames will be forwarded to TSN stream.
@@ -191,12 +196,17 @@ private:
     bool tsn_mode;
     std::shared_ptr<tsn::TSN_Talker> socket_out;
     std::shared_ptr<tsn::TSN_Stream> stream_out;
+    std::shared_ptr<tsn::TSN_Listener> socket_in;
+    std::shared_ptr<tsn::TSN_Stream> stream_in;
 
-    void tsn_proxy_worker();
+    void rtde_worker();
+    void tsn_worker();
 
     std::mutex bottleneck;
     std::condition_variable tsn_cv;
-    std::thread proxy;
+    std::thread tsn_proxy;
+    std::thread rtde_proxy;
+
     bool proxy_running;
 };
 
