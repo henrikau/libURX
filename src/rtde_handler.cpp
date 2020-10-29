@@ -173,9 +173,6 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
 // Once fixed, update doc in .hpp
 bool urx::RTDE_Handler::recv()
 {
-    if (tsn_mode)
-        return false;
-
     int rcode = con_->do_recv(buffer_, 2048);
     if (rcode < 0)
         return false;

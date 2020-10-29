@@ -41,6 +41,14 @@ public:
         RTDE_Handler(new Con(remote, RTDE_PORT))
     {};
 
+        RTDE_Handler(std::shared_ptr<tsn::TSN_Stream> talker,
+                     std::shared_ptr<tsn::TSN_Stream> listener) :
+            RTDE_Handler(new TSNCon(talker, listener))
+        {
+            tsn_mode = true;
+            // setup tsn
+        };
+
     /**
      * \brief Set protoocol version (currently v2)
      *
