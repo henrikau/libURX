@@ -7,7 +7,10 @@
  */
 #include <urx/robot.hpp>
 
+#ifndef BOOST_LOG_DYN_LINK
 #define BOOST_LOG_DYN_LINK
+#endif
+
 #include <boost/log/trivial.hpp>
 namespace logging = boost::log;
 

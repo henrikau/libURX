@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
 
     std::string pl = "NOT_FOUND";
     resp->variables = 0;
-    strncat(dst, pl.c_str(), pl.length());
+    strncat(dst, pl.c_str(), pl.length()+1);
     resp->hdr.size = htons(sizeof(*resp) + pl.length()-1);
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
 

@@ -212,7 +212,7 @@ bool urx::RTDE_Handler::enable_tsn_proxy(const std::string& ifname,
         socket_in  = tsn::TSN_Listener::Create(ifname, src_mac);
         stream_in  = tsn::TSN_Stream::CreateListener(socket_in, sid_in);
 
-    } catch (std::runtime_error) {
+    } catch (const std::runtime_error& e) {
         std::cerr << __func__  << "() Creating socket and talker failed" << std::endl;
         return false;
     }
