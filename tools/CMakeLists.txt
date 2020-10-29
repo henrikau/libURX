@@ -9,6 +9,7 @@ set (APPS
   robot_speed
   measure_roundtrip
   tsn_rtde_proxy
+  rtde_tsn_client
   )
 
 foreach(a ${APPS})
