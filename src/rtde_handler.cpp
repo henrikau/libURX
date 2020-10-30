@@ -218,8 +218,8 @@ bool urx::RTDE_Handler::enable_tsn_proxy(const std::string& ifname,
     }
 
     // FIXME: get size of recipe and notify talker
-
     tsn_mode = true;
+    socket_in->set_ready();
     return true;
 }
 
@@ -247,12 +247,28 @@ bool urx::RTDE_Handler::start_tsn_proxy()
     return true;
 }
 
+#define US_IN_NS 1000
+#define MS_IN_NS (1000*US_IN_NS)
+
+static bool _set_dl(uint64_t runtime_ns, uint64_t dl_ns, uint64_t period_ns)
+{
+    unsigned int flags = 0;
+    struct sched_attr attr;
+    attr.size = sizeof(struct sched_attr);
+    attr.sched_flags	= 0;
+    attr.sched_nice	= 0;
+    attr.sched_priority	= 0;
+    attr.sched_policy	= 6; // SCHED_DEADLINE
+    attr.sched_runtime  = runtime_ns;
+    attr.sched_deadline = dl_ns;
+    attr.sched_period   = period_ns;
+    return syscall(314, 0, &attr, flags) == 0;
+}
+
 void urx::RTDE_Handler::tsn_worker()
 {
     // Grab incoming TSN frames, extract from TSN-header and forward
     // directly to robot via rtde
-
-
     {
         std::unique_lock<std::mutex> lk(bottleneck);
         auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
@@ -262,30 +278,33 @@ void urx::RTDE_Handler::tsn_worker()
         }
     }
 
-    unsigned int flags = 0;
-    struct sched_attr attr;
-    attr.size = sizeof(struct sched_attr);
-    attr.sched_flags	= 0;
-    attr.sched_nice	= 0;
-    attr.sched_priority	= 0;
-    attr.sched_policy	= 6; // SCHED_DEADLINE
-    attr.sched_runtime  =      500 * 1000; // 500us
-    attr.sched_deadline = 2 * 1000 * 1000;
-    attr.sched_period   = 2 * 1000 * 1000;
-    int err = syscall(314, 0, &attr, flags);
-
-    if (err != 0) {
+    if (!_set_dl(100 * US_IN_NS, 1 * MS_IN_NS, 2 * MS_IN_NS)) {
         std::cerr << __func__ << "() Failed setting deadline scheduler" << std::endl;
         proxy_running = false;
         return;
     }
 
+    unsigned char buf[2048];
+    memset(buf, 0, 2048);
+
+    struct avtp_stream_pdu *pdu = (struct avtp_stream_pdu *)buf;
     while (proxy_running) {
-        // wait for incoming tsn-frame
-        // strip tsn-header
-        // forward via rtde
-        // struct avtp_stream_pdu *pdu = (struct avtp_stream_pdu  *)buf;
-        // stream_in->recv(pdu, 1500);
+
+        // wait for incoming tsn-frame, data will point into pdu
+        uint8_t *data;
+        int rsz = stream_in->recv(pdu, &data);
+
+        // Very simple sanity-check, if header-size matches actual size,
+        // then we're on to something and can pass that along
+        struct rtde_data_package *dp = (struct rtde_data_package *)data;
+        if (rsz == ntohs(dp->hdr.size)) {
+            // This frame should be formatted already, so we don't have
+            // to do any of the fiddling to get it ready
+            int sendcode = con_->do_send(data, ntohs(dp->hdr.size));
+            if (sendcode <= 0)
+                proxy_running = false;
+        }
+        memset(buf, 0, rsz);
     }
 }
 
@@ -297,19 +316,7 @@ void urx::RTDE_Handler::rtde_worker()
         return;
     }
 
-    unsigned int flags = 0;
-    struct sched_attr attr;
-    attr.size = sizeof(struct sched_attr);
-    attr.sched_flags	= 0;
-    attr.sched_nice	= 0;
-    attr.sched_priority	= 0;
-
-    attr.sched_policy	= 6; // SCHED_DEADLINE
-    attr.sched_runtime  =      500 * 1000; // 500us
-    attr.sched_deadline = 2 * 1000 * 1000;
-    attr.sched_period   = 2 * 1000 * 1000;
-    int err = syscall(314, 0, &attr, flags);
-    if (err != 0) {
+    if (!_set_dl(500 * US_IN_NS, 2 * MS_IN_NS, 2*MS_IN_NS)) {
         std::cerr << __func__ << "() Failed setting deadline scheduler" << std::endl;
         tsn_cv.notify_all();
         return;
