@@ -7,6 +7,7 @@ void usage(const char *argv0)
 
     std::cout << "    -d UR_Controller_IPv4 address" << std::endl;
     std::cout << "    -i TSN target interface" << std::endl;
+    std::cout << "    -f <UR-scriptfile>" << std::endl;
     std::cout << "    -m TSN Destination MAC address (consumer of TSN stream)" << std::endl;
     std::cout << "    -m TSN Source MAC address (sink of TSN stream, RTDE proxy)" << std::endl;
     std::cout << "    -p TSN stream priority " << std::endl;
@@ -19,7 +20,7 @@ std::string ip4("127.0.0.1");
 std::string ifname("eth0");
 std::string dst_mac("01:00:5e:00:00:00");
 std::string src_mac("01:00:5e:00:00:01");
-
+std::string sfile;
 int prio = 3;
 int sid_out = 42;
 int sid_in = 43;
@@ -28,10 +29,13 @@ void get_opts(int argc, char *argv[])
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "d:i:m:M:p:s:S:h")) != -1) {
+    while ((opt = getopt(argc, argv, "d:f:i:m:M:p:s:S:h")) != -1) {
         switch (opt) {
         case 'd':
             ip4 = optarg;
+            break;
+        case 'f':
+            sfile = optarg;
             break;
         case 'i':
             ifname = optarg;

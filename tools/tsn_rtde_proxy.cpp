@@ -31,11 +31,16 @@ int main(int argc, char *argv[])
     std::cout << "TSN Stream ID (out): " << sid_out << std::endl;
     std::cout << "TSN Stream ID (in): " << sid_in << std::endl;
 
-
+    urx::URX_Handler urxh(ip4);
     urx::RTDE_Handler h(ip4);
+
     h.connect_ur();
     if (!h.set_version()) {
         std::cout << "Setting version FAILED" << std::endl;
+        return -1;
+    }
+    if (!urxh.upload_script(sfile)) {
+        std::cerr << "Uploading scrpit to UR FAILED" << std::endl;
         return -1;
     }
 
