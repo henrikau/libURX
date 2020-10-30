@@ -88,4 +88,13 @@ bool close_vec(std::vector<double> actual, std::vector<double> target, const dou
     return true;
 }
 
+bool close_vec_unsafe(double *actual, std::vector<double> target, const double epsilon)
+{
+    for (size_t c = 0; c < target.size() ; ++c) {
+        if (absf(actual[c] - target[c]) > epsilon)
+            return false;
+    }
+    return true;
+}
+
 #endif  // RTDE_HELPER_HPP
