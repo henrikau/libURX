@@ -64,24 +64,28 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int32_t in_seqnr;
-    int32_t cmd;
-    double set_qd[urx::END];
+    int32_t in_seqnr = 0;
+    int32_t cmd = 2;
+    double wqd[urx::END];
+    for (auto &r : wqd)
+        r = 0.0;
+
     urx::RTDE_Recipe in =urx::RTDE_Recipe();
     in.dir_input();
     in.add_field("input_int_register_0", &in_seqnr);
     in.add_field("input_int_register_1", &cmd);
-    in.add_field("input_double_register_0", &set_qd[0]);
-    in.add_field("input_double_register_1", &set_qd[1]);
-    in.add_field("input_double_register_2", &set_qd[2]);
-    in.add_field("input_double_register_3", &set_qd[3]);
-    in.add_field("input_double_register_4", &set_qd[4]);
-    in.add_field("input_double_register_5", &set_qd[5]);
+    in.add_field("input_double_register_0", &wqd[0]);
+    in.add_field("input_double_register_1", &wqd[1]);
+    in.add_field("input_double_register_2", &wqd[2]);
+    in.add_field("input_double_register_3", &wqd[3]);
+    in.add_field("input_double_register_4", &wqd[4]);
+    in.add_field("input_double_register_5", &wqd[5]);
     if (!h.register_recipe(&in)) {
         printf("%s: Failed setting input_recipe!\n", __func__);
         return -1;
     }
-
+    // Make sure we reset speed from the beginning to clear out any old values
+    h.send(in.recipe_id());
 
     h.enable_tsn_proxy(ifname, prio, dst_mac, src_mac, sid_out, sid_in);
     h.start_tsn_proxy();
