@@ -16,29 +16,40 @@ set (SRCS
   robot.cpp
   )
 
+if (USE_TSN)
+  set (SRCS
+    ${SRCS}
+    tsn_con.cpp
+    rtde_tsn_handler.cpp
+    )
+endif ()
+set (LIBS
+  ${Boost_LIBRARIES}		#Required for test. Need to figure out why that is
+)
 
-if (ALT_LIBS)
-  add_library(avtp SHARED IMPORTED)
-  set_target_properties(avtp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/${ALT_LIBS}/lib/libavtp.so.0.1.0)
-  set_property(TARGET avtp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/${ALT_LIBS}/include>)
+if (USE_TSNLIB)
+  if (ALT_LIBS)
+    add_library(avtp SHARED IMPORTED)
+    set_target_properties(avtp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/${ALT_LIBS}/lib/libavtp.so.0.1.0)
+    set_property(TARGET avtp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/${ALT_LIBS}/include>)
 
-  add_library(tsn SHARED IMPORTED)
-  set_target_properties(tsn PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/${ALT_LIBS}/lib/libtsn.so.1.0)
-  set_property(TARGET avtp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/${ALT_LIBS}/include>)
-
-else ()
-  message (WARNING "ALT_LIBS is not set, this means that libavtp should be installed system-wide. ")
-  message (WARNING "This has not been tested. You're on your own.")
+    add_library(tsn SHARED IMPORTED)
+    set_target_properties(tsn PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/${ALT_LIBS}/lib/libtsn.so.1.0)
+    set_property(TARGET avtp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/${ALT_LIBS}/include>)
+  else ()
+    message (WARNING "ALT_LIBS is not set, this means that libavtp should be installed system-wide. ")
+    message (WARNING "This has not been tested. You're on your own.")
+  endif ()
+  set (LIBS
+    ${LIBS}
+    avtp
+    tsn
+    )
 endif ()
 
 
-set (LIBS
-  ${Boost_LIBRARIES}		#Required for test. Need to figure out why that is
-  avtp
-  tsn
-  )
 
 add_library (urx SHARED ${SRCS})
 

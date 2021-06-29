@@ -9,7 +9,7 @@ set (PROJECT_VERSION "1.0")
 
 option(BUILD_TESTS    "Build tests and emulators" ON)
 option(ALT_LIBS  "Alternative location for libraries" OFF)
-
+option(USE_TSNLIB "Build with tsnlib (tsn-proxy)" OFF)
 enable_testing ()
 
 include (CheckCXXCompilerFlag REQUIRED)
@@ -51,7 +51,9 @@ include (CheckCCompilerFlag REQUIRED)
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -pedantic -Wextra")
-
+if (USE_TSNLIB)
+  add_definitions(-DUSE_TSN)
+endif ()
 
 check_c_compiler_flag ("-fpic" C_SUPPORT_FPIC_1)
 check_c_compiler_flag ("-fPIC" C_SUPPORT_FPIC_2)

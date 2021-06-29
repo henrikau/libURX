@@ -10,7 +10,10 @@
 #include <iostream>
 #include <string>
 #include <stdbool.h>
+#ifdef USE_TSN
 #include <tsn/tsn_stream.hpp>
+#endif
+#include <exception>
 
 namespace urx {
     constexpr int RTDE_PORT = 30004;
@@ -43,6 +46,7 @@ namespace urx {
         bool connected_;
     };
 
+#ifdef USE_TSN
     class TSNCon : public Con
     {
     public:
@@ -67,6 +71,40 @@ namespace urx {
         uint8_t recv_buf[2048];
         struct avtp_stream_pdu *pdu;
     };
-}
+#else
+    class TSNCon : public Con
+    {
+    public:
+        TSNCon() :
+            Con("127.0.0.1", 30002)
+        {
+            throw std::runtime_error("Built without TSN support");
+        };
+        void disconnect()
+        {
+            throw std::runtime_error("Built without TSN support");
+        }
+        bool do_connect(bool)
+        {
+            throw std::runtime_error("Built without TSN support");
+        }
 
+        int do_send(void *, int)
+        {
+            throw std::runtime_error("Built without TSN support");
+        }
+
+        int do_recv(void *, int )
+        {
+            throw std::runtime_error("Built without TSN support");
+        }
+
+        int do_send_recv(void *, int , void *, int )
+        {
+            throw std::runtime_error("Built without TSN support");
+        }
+    };
+#endif  // USE_TSN
+
+}
 #endif

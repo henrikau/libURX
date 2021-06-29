@@ -389,21 +389,4 @@ BOOST_AUTO_TEST_CASE(test_handler_input_full)
     free(resp);
 }
 
-BOOST_AUTO_TEST_CASE(test_add_tsn_remote)
-{
-    struct rtde_control_package_resp *resp = create_cp_resp();
-    _set_recipe_resp(resp, "DOUBLE,VECTOR6D", 42);
-    mock->set_recvBuf((unsigned char *)resp, (int)ntohs(resp->hdr.size));
-    mock->set_sendCode(42);
-
-    urx::RTDE_Recipe *r = new urx::RTDE_Recipe();
-    double ts;
-    int32_t tq[6];
-    r->add_field("timestamp", &ts);
-    r->add_field("target_q", tq);
-
-    BOOST_CHECK(h->register_recipe(r));
-    BOOST_CHECK(h->enable_tsn_proxy("lo", 3, "01:00:5e:01:01:00", "01:00:5e:01:01:01", 42, 43));
-}
-
 BOOST_AUTO_TEST_SUITE_END()

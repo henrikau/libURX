@@ -8,9 +8,14 @@ set (APPS
   joint_speed
   robot_speed
   measure_roundtrip
-  tsn_rtde_proxy
-  rtde_tsn_client
   )
+if (USE_TSN)
+  set (SRCS
+    ${SRCS}
+    tsn_rtde_proxy
+    rtde_tsn_client
+    )
+endif ()
 
 foreach(a ${APPS})
   add_executable (${a} ${a}.cpp)
