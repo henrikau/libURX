@@ -44,6 +44,39 @@ Very simple script that will connect to a controller and query version
 running. It will then query the controller for timestamp and joint
 positions.
 
+Usage
+``` bash
+$ ./build/tools/get_remote -i 192.168.1.159 -c tmp.csv -l 100
+$ head -n5 tmp.csv
+ts_loc,ts_ur
+1624874436566213,41.032000
+1624874436568284,41.034000
+1624874436570391,41.036000
+1624874436572504,41.038000
+$
+```
+This provides a link between local time and simulator time in 2ms
+increments.
+
+### robot_speed
+
+A simple position regulator is implemented using urx::Robot to read arm
+position, calculate a new speed vector and update joint speeds. This
+particular example is hardcoded to drive the arm to single position.
+
+``` bash
+$ ./build/tools/get_remote -i 192.168.1.159 -c tmp.csv -f scripts/ur_speedj.script
+register_recipe() new recipe
+new output recipe: output_int_register_0,timestamp,target_q,target_qd,target_qdd,target_moment
+register_recipe() recipe registred OK
+register_recipe() new recipe
+new output recipe: input_int_register_0,input_int_register_1,input_double_register_0,input_double_register_1,input_double_register_2,input_double_register_3,input_double_register_4,input_double_register_5
+register_recipe() recipe registred OK
+Position reached, terminating program.
+$
+```
+
+
 
 ## Using liburx
 
