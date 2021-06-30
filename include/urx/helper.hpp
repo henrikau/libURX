@@ -62,6 +62,15 @@ enum joint_n {
     END,                        // not used, marker only
 };
 
+enum tcp_pose_n {
+    TCP_x = 0,
+    TCP_y,
+    TCP_z,
+    TCP_rx,
+    TCP_ry,
+    TCP_rz,
+};
+
 const double PI = 3.141592653589793;
 double deg_to_rad(const double deg)
 {

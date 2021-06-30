@@ -35,7 +35,8 @@ namespace urx {
             jq(DOF),
             jqd(DOF),
             jqdd(DOF),
-            jt(DOF)
+            jt(DOF),
+            tcp_pose(DOF)
         {
         };
 
@@ -48,6 +49,8 @@ namespace urx {
             jqd = a.jqd;
             jqdd = a.jqdd;
             jt = a.jt;
+
+            tcp_pose = a.tcp_pose;
         };
 
         Robot_State& operator=(const Robot_State& a)
@@ -60,6 +63,8 @@ namespace urx {
                 jqd[i]  = a.jqd[i];
                 jqdd[i] = a.jqdd[i];
                 jt[i]   = a.jt[i];
+
+                tcp_pose[i] = a.tcp_pose[i];
             }
             return *this;
         }
@@ -80,6 +85,9 @@ namespace urx {
         std::vector<double> jqd;
         std::vector<double> jqdd;
         std::vector<double> jt;         // joint torque
+
+        // Tool Center Point pose
+        std::vector<double> tcp_pose;
     };
 
 
@@ -178,15 +186,6 @@ namespace urx {
         bool update_w(std::vector<double>& new_w);
 
         /**
-         * \brief initalize robot, create recipes for controlling Tool Center Point pose and prepare for start
-         *
-         * \return true if all worked as expected
-         */
-        bool init_output_TCP_pose();
-        bool init_input_TCP_pose();
-        bool init_TCP_pose() { return init_output_TCP_pose() && init_input_TCP_pose(); }
-
-        /**
          * \brief initalize robot, create recipes and prepare for start
          *
          * \return true if all worked as expected
@@ -194,6 +193,18 @@ namespace urx {
         bool init_output();
         bool init_input();
         bool init() { return init_output() && init_input(); }
+
+        /**
+         * \brief initalize robot, create recipes for controlling Tool Center Point pose and prepare for start
+         *
+         * As TCP pose is a part of the robot state then init_output_TCP_pose() should
+         * probably not be a separate function. Instead, init_output() should handle updating the 
+         * entire robot state, incl TCP pose: But this gave a test error during build.
+         * 
+         * \return true if all worked as expected
+         */
+        bool init_output_TCP_pose();
+        bool init_input_TCP_pose();
 
         /**
          * \brief Upload new script to URController
@@ -287,6 +298,7 @@ namespace urx {
         double target_qd[DOF];
         double target_qdd[DOF];
         double target_moment[DOF];
+        double target_TCP_pose[DOF];
 
         // Input state
         int32_t in_seqnr;

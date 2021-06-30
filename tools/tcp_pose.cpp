@@ -9,15 +9,6 @@
 #include <urx/helper.hpp>
 #include <unistd.h>
 
-enum TCP_POSE_n {
-    TCP_x = 0,
-    TCP_y,
-    TCP_z,
-    TCP_rx,
-    TCP_ry,
-    TCP_rz,
-    END,       // not used, marker only
-};
 
 double new_speed(const double err, const double prev_err, const double prev_speed)
 {
@@ -43,12 +34,12 @@ int main(int argc, char *argv[])
     // target pose for TCP in base frame
     // x,y,z [m]  ,   rx,ry,rz [rad]
     std::vector<double> aq(urx::DOF);
-    aq[TCP_x]   =  0.5;
-    aq[TCP_y]   = -0.6;
-    aq[TCP_z]   =  0.6;
-    aq[TCP_rx]  = urx::deg_to_rad( 90.0);
-    aq[TCP_ry]  = urx::deg_to_rad(    0);
-    aq[TCP_rz]  = urx::deg_to_rad(    0);
+    aq[urx::TCP_x]   =  0.5;
+    aq[urx::TCP_y]   = -0.6;
+    aq[urx::TCP_z]   =  0.6;
+    aq[urx::TCP_rx]  = urx::deg_to_rad( 90.0);
+    aq[urx::TCP_ry]  = urx::deg_to_rad(    0);
+    aq[urx::TCP_rz]  = urx::deg_to_rad(    0);
 
     std::atomic<bool> running(true);
     std::vector<double> w(urx::DOF);;
@@ -79,7 +70,7 @@ int main(int argc, char *argv[])
 
     // Robot startup
     urx::Robot robot = urx::Robot(ip4);
-    if (!robot.init_output() ||
+    if (!robot.init_output_TCP_pose() ||
         !robot.init_input_TCP_pose() ||
         !robot.upload_script(sfile))   {
         std::cout << "urx::Robot init failed" << std::endl;
@@ -90,21 +81,20 @@ int main(int argc, char *argv[])
         return 3;
     }
 
-//    while (running) {
-//        urx::Robot_State state = robot.state();
-//
-//        // if all errors are ok, we are done, add TCP_pose to state!
-//        if (close_vec(state.jq, aq, 0.0001)) {
-//            running = false;
-//            for (std::size_t i = 0; i < urx::DOF; ++i)
-//                w[i] = 0.0;
-//        }
-//        robot.update_w(w);
-//    }
-
-
     robot.update_TCP_pose(aq);
-    std::cout << "Position hopefully reached, terminating program." << std::endl;
+
+    while (running) {
+        urx::Robot_State state = robot.state();
+
+        // if all errors are ok, we are done
+        if (close_vec(state.tcp_pose, aq, 0.0001)) {
+            running = false;
+            for (std::size_t i = 0; i < urx::DOF; ++i)
+                w[i] = 0.0;
+        }
+    }
+
+    std::cout << "Position reached, terminating program." << std::endl;
 
     robot.stop();
     return 0;

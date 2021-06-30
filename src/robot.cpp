@@ -53,6 +53,85 @@ bool urx::Robot::init_output()
         return false;
     if (!out->add_field("target_moment", target_moment))
         return false;
+//    if (!out->add_field("target_TCP_pose", target_TCP_pose))
+//        return false;
+
+    if (!rtdeh_->register_recipe(out)) {
+        out->clear_fields();
+        return false;
+    }
+
+    out_initialized_ = true;
+    return true;
+}
+
+bool urx::Robot::init_input()
+{
+    std::lock_guard<std::mutex> lg(bottleneck);
+    if (!in)
+        return false;
+
+    in->add_field("input_int_register_0", &in_seqnr);
+    in->add_field("input_int_register_1", &cmd);
+
+    // FIXME: This breaks the DoF independence
+    in->add_field("input_double_register_0", &set_qd[0]);
+    in->add_field("input_double_register_1", &set_qd[1]);
+    in->add_field("input_double_register_2", &set_qd[2]);
+    in->add_field("input_double_register_3", &set_qd[3]);
+    in->add_field("input_double_register_4", &set_qd[4]);
+    in->add_field("input_double_register_5", &set_qd[5]);
+
+    if (!rtdeh_->register_recipe(in)) {
+        BOOST_LOG_TRIVIAL(error) << __func__ << "() Failed registering input recipe" << std::endl;
+        return false;
+    }
+
+    in_initialized_ = true;
+    return true;
+}
+
+bool urx::Robot::init_output_TCP_pose()
+{
+    std::lock_guard<std::mutex> lg(bottleneck);
+    if (!out)
+        return false;
+
+    // don't run init() multiple times
+    if (out_initialized_) {
+        BOOST_LOG_TRIVIAL(warning) << __func__ << "() already initalized" << std::endl;
+        return true;
+    }
+
+    if (!rtdeh_->is_connected()) {
+        BOOST_LOG_TRIVIAL(warning) << __func__ << "() rtdeh not connected" << std::endl;
+        return false;
+    }
+
+    if (out->num_fields() != 0) {
+        BOOST_LOG_TRIVIAL(warning) << "() Cannot re-init a populated out-recipe " << out->get_fields();
+        return false;
+    }
+
+    // register output fields
+    // Note: We *could* register the fields in ur_state.directly, but then
+    // we'd set ourselves up from some really awesome race conditions,
+    // so do a 2-step approach.
+
+    if (!out->add_field("output_int_register_0", &out_seqnr))
+        return false;
+    if (!out->add_field("timestamp", &timestamp))
+        return false;
+    if (!out->add_field("target_q", target_q))
+        return false;
+    if (!out->add_field("target_qd", target_qd))
+        return false;
+    if (!out->add_field("target_qdd", target_qdd))
+        return false;
+    if (!out->add_field("target_moment", target_moment))
+        return false;
+    if (!out->add_field("target_TCP_pose", target_TCP_pose))
+        return false;
 
     if (!rtdeh_->register_recipe(out)) {
         out->clear_fields();
@@ -89,31 +168,6 @@ bool urx::Robot::init_input_TCP_pose()
     return true;
 }
 
-bool urx::Robot::init_input()
-{
-    std::lock_guard<std::mutex> lg(bottleneck);
-    if (!in)
-        return false;
-
-    in->add_field("input_int_register_0", &in_seqnr);
-    in->add_field("input_int_register_1", &cmd);
-
-    // FIXME: This breaks the DoF independence
-    in->add_field("input_double_register_0", &set_qd[0]);
-    in->add_field("input_double_register_1", &set_qd[1]);
-    in->add_field("input_double_register_2", &set_qd[2]);
-    in->add_field("input_double_register_3", &set_qd[3]);
-    in->add_field("input_double_register_4", &set_qd[4]);
-    in->add_field("input_double_register_5", &set_qd[5]);
-
-    if (!rtdeh_->register_recipe(in)) {
-        BOOST_LOG_TRIVIAL(error) << __func__ << "() Failed registering input recipe" << std::endl;
-        return false;
-    }
-
-    in_initialized_ = true;
-    return true;
-}
 bool urx::Robot::upload_script(const std::string& script)
 {
     return urxh_->upload_script(script);
@@ -142,6 +196,8 @@ bool urx::Robot::recv()
             ur_state.jqd[i]  = target_qd[i];
             ur_state.jqdd[i] = target_qdd[i];
             ur_state.jt[i]   = target_moment[i];
+
+            ur_state.tcp_pose[i] = target_TCP_pose[i];
         }
         updated_state_ = true;
 
