@@ -1,0 +1,13 @@
+def rtde_prog():
+    seqnr=0
+    tcp_x=0.5
+    tcp_y=-0.6
+    tcp_z=0.6
+    tcp_rx=1.570796
+    tcp_ry=0
+    tcp_rz=0
+    acceleration=0.5
+    speed=0.75
+    movel(p[tcp_x,tcp_y,tcp_z,tcp_rx,tcp_ry,tcp_rz], a=acceleration, v=speed, t=0, r=0)
+end
+run program

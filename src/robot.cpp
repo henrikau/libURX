@@ -63,6 +63,32 @@ bool urx::Robot::init_output()
     return true;
 }
 
+bool urx::Robot::init_input_TCP_pose()
+{
+    std::lock_guard<std::mutex> lg(bottleneck);
+    if (!in)
+        return false;
+
+    in->add_field("input_int_register_0", &in_seqnr);
+    in->add_field("input_int_register_1", &cmd);
+
+    // FIXME: This breaks the DoF independence (copied from init_input())
+    in->add_field("input_double_register_0", &set_TCP_pose[0]);
+    in->add_field("input_double_register_1", &set_TCP_pose[1]);
+    in->add_field("input_double_register_2", &set_TCP_pose[2]);
+    in->add_field("input_double_register_3", &set_TCP_pose[3]);
+    in->add_field("input_double_register_4", &set_TCP_pose[4]);
+    in->add_field("input_double_register_5", &set_TCP_pose[5]);
+
+    if (!rtdeh_->register_recipe(in)) {
+        BOOST_LOG_TRIVIAL(error) << __func__ << "() Failed registering input recipe" << std::endl;
+        return false;
+    }
+
+    in_initialized_ = true;
+    return true;
+}
+
 bool urx::Robot::init_input()
 {
     std::lock_guard<std::mutex> lg(bottleneck);
@@ -200,6 +226,36 @@ bool urx::Robot::updated_state()
 {
     std::lock_guard<std::mutex> lg(bottleneck);
     return updated_state_;
+}
+
+bool urx::Robot::update_TCP_pose(std::vector<double>& new_pose)
+{
+    std::lock_guard<std::mutex> lg(bottleneck);
+
+    if (new_pose.size() != DOF)
+        return false;
+
+    if (!in_initialized_) {
+        BOOST_LOG_TRIVIAL(error) << __func__ << "() init_input() not completed successfully yet" << std::endl;
+        return false;
+    }
+
+    // ranges are nice, but we have registred the address of the
+    // elements in set_qd with the recipe, so we cannot simply swap, we
+    // need a per-element copy
+    for (std::size_t i = 0; i < new_pose.size(); ++i)
+        set_TCP_pose[i] = new_pose[i];
+
+    in_seqnr = ++last_seqnr;
+    cmd = NEW_COMMAND;
+    if (!rtdeh_->send(in->recipe_id())) {
+        std::cout << "Sending to handler using " << in->recipe_id() << " failed" << std::endl;
+        return false;
+    }
+
+    cmd = NO_COMMAND;
+
+    return true;
 }
 
 bool urx::Robot::update_w(std::vector<double>& new_w)

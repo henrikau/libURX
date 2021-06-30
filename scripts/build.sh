@@ -51,10 +51,10 @@ while getopts "acCft" o; do
 	esac
 done
 
-export CC=/usr/bin/clang
-export CXX=/usr/bin/clang++
-# export CC=/usr/bin/gcc
-# export CXX=/usr/bin/g++
+#export CC=/usr/bin/clang
+#export CXX=/usr/bin/clang++
+export CC=/usr/bin/gcc
+export CXX=/usr/bin/g++
 
 test -z ${DO_CMAKE} || cmake .. -DALT_LIBS="external/usr"
 test -z ${DO_CLEAN} || make clean

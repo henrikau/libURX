@@ -162,6 +162,13 @@ namespace urx {
          * \return true if updated state is available
          */
         bool updated_state();
+        
+        /**
+         * \brief set new target Tool Center Point pose
+         *
+         * \return true if valid and successfully sent to remote.
+         */
+        bool update_TCP_pose(std::vector<double>& new_pose);
 
         /**
          * \brief set new target joint speed (angular)
@@ -169,6 +176,15 @@ namespace urx {
          * \return true if valid and successfully sent to remote.
          */
         bool update_w(std::vector<double>& new_w);
+
+        /**
+         * \brief initalize robot, create recipes for controlling Tool Center Point pose and prepare for start
+         *
+         * \return true if all worked as expected
+         */
+        bool init_output_TCP_pose();
+        bool init_input_TCP_pose();
+        bool init_TCP_pose() { return init_output_TCP_pose() && init_input_TCP_pose(); }
 
         /**
          * \brief initalize robot, create recipes and prepare for start
@@ -276,6 +292,7 @@ namespace urx {
         int32_t in_seqnr;
         int32_t cmd;
         double set_qd[DOF];
+        double set_TCP_pose[DOF];
 
         Robot_State ur_state;
         std::vector<std::tuple<std::chrono::microseconds, double>> ts_log;

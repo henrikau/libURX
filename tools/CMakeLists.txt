@@ -8,6 +8,7 @@ set (APPS
   joint_speed
   robot_speed
   measure_roundtrip
+  tcp_pose
   )
 if (USE_TSN)
   set (SRCS
