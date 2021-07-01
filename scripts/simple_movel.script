@@ -1,6 +1,6 @@
 def rtde_prog():
     seqnr=0
-    tcp_x=0.5
+    tcp_x=0.6
     tcp_y=-0.6
     tcp_z=0.6
     tcp_rx=1.570796

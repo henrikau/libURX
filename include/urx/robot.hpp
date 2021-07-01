@@ -21,7 +21,8 @@ namespace urx {
     enum {
         NO_COMMAND = 0,
         STOP_COMMAND,
-        NEW_COMMAND
+        NEW_CONTROL_INPUT_COMMAND,
+        NEW_TCP_POSE_REF_COMMAND
     };
 
     /**
@@ -172,11 +173,14 @@ namespace urx {
         bool updated_state();
         
         /**
-         * \brief set new target Tool Center Point pose
+         * \brief set new reference for Tool Center Point pose. 
+         * 
+         * Triggers inverse kinematic calculations in URScript for finding 
+         * corresponding joint angle references
          *
          * \return true if valid and successfully sent to remote.
          */
-        bool update_TCP_pose(std::vector<double>& new_pose);
+        bool update_TCP_pose_ref(std::vector<double>& new_pose);
 
         /**
          * \brief set new target joint speed (angular)
@@ -249,6 +253,8 @@ namespace urx {
         */
         void set_dut() { dut_ = true; };
 
+        double* get_q_ref(){ return q_ref;};
+
     private:
         /**
          * \brief mainloop for reciever thread
@@ -300,11 +306,15 @@ namespace urx {
         double target_moment[DOF];
         double target_TCP_pose[DOF];
 
-        // Input state
+        // Control input
         int32_t in_seqnr;
         int32_t cmd;
         double set_qd[DOF];
-        double set_TCP_pose[DOF];
+
+        // State reference
+        double q_ref[DOF];
+        double q_ref_buf[DOF];      // To avoid race conditions
+        double TCP_pose_ref[DOF];
 
         Robot_State ur_state;
         std::vector<std::tuple<std::chrono::microseconds, double>> ts_log;

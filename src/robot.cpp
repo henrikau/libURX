@@ -53,8 +53,6 @@ bool urx::Robot::init_output()
         return false;
     if (!out->add_field("target_moment", target_moment))
         return false;
-//    if (!out->add_field("target_TCP_pose", target_TCP_pose))
-//        return false;
 
     if (!rtdeh_->register_recipe(out)) {
         out->clear_fields();
@@ -133,6 +131,20 @@ bool urx::Robot::init_output_TCP_pose()
     if (!out->add_field("target_TCP_pose", target_TCP_pose))
         return false;
 
+    // Registers for reading results of inverse kinematic calculations
+    if (!out->add_field("output_double_register_0", &q_ref_buf[0]))
+        return false;
+    if (!out->add_field("output_double_register_1", &q_ref_buf[1]))
+        return false;
+    if (!out->add_field("output_double_register_2", &q_ref_buf[2]))
+        return false;
+    if (!out->add_field("output_double_register_3", &q_ref_buf[3]))
+        return false;
+    if (!out->add_field("output_double_register_4", &q_ref_buf[4]))
+        return false;
+    if (!out->add_field("output_double_register_5", &q_ref_buf[5]))
+        return false;
+
     if (!rtdeh_->register_recipe(out)) {
         out->clear_fields();
         return false;
@@ -152,12 +164,23 @@ bool urx::Robot::init_input_TCP_pose()
     in->add_field("input_int_register_1", &cmd);
 
     // FIXME: This breaks the DoF independence (copied from init_input())
-    in->add_field("input_double_register_0", &set_TCP_pose[0]);
-    in->add_field("input_double_register_1", &set_TCP_pose[1]);
-    in->add_field("input_double_register_2", &set_TCP_pose[2]);
-    in->add_field("input_double_register_3", &set_TCP_pose[3]);
-    in->add_field("input_double_register_4", &set_TCP_pose[4]);
-    in->add_field("input_double_register_5", &set_TCP_pose[5]);
+    // Registers for sending control input
+    in->add_field("input_double_register_0", &set_qd[0]);
+    in->add_field("input_double_register_1", &set_qd[1]);
+    in->add_field("input_double_register_2", &set_qd[2]);
+    in->add_field("input_double_register_3", &set_qd[3]);
+    in->add_field("input_double_register_4", &set_qd[4]);
+    in->add_field("input_double_register_5", &set_qd[5]);
+
+    // Registers 6 and 7 are ment for sending acceleration and time, not implemented yet
+
+    // Registers for sending input to inverse kinematic calculations
+    in->add_field("input_double_register_8" , &TCP_pose_ref[0]);
+    in->add_field("input_double_register_9" , &TCP_pose_ref[1]);
+    in->add_field("input_double_register_10", &TCP_pose_ref[2]);
+    in->add_field("input_double_register_11", &TCP_pose_ref[3]);
+    in->add_field("input_double_register_12", &TCP_pose_ref[4]);
+    in->add_field("input_double_register_13", &TCP_pose_ref[5]);
 
     if (!rtdeh_->register_recipe(in)) {
         BOOST_LOG_TRIVIAL(error) << __func__ << "() Failed registering input recipe" << std::endl;
@@ -192,12 +215,13 @@ bool urx::Robot::recv()
         ur_state.ur_ts = timestamp;
         ur_state.seqnr = out_seqnr;
         for (std::size_t i = 0; i < urx::DOF; i++) {
-            ur_state.jq[i]   = target_q[i];
-            ur_state.jqd[i]  = target_qd[i];
-            ur_state.jqdd[i] = target_qdd[i];
-            ur_state.jt[i]   = target_moment[i];
-
+            ur_state.jq[i]       = target_q[i];
+            ur_state.jqd[i]      = target_qd[i];
+            ur_state.jqdd[i]     = target_qdd[i];
+            ur_state.jt[i]       = target_moment[i];
             ur_state.tcp_pose[i] = target_TCP_pose[i];
+
+            q_ref[i] = q_ref_buf[i];
         }
         updated_state_ = true;
 
@@ -284,7 +308,7 @@ bool urx::Robot::updated_state()
     return updated_state_;
 }
 
-bool urx::Robot::update_TCP_pose(std::vector<double>& new_pose)
+bool urx::Robot::update_TCP_pose_ref(std::vector<double>& new_pose)
 {
     std::lock_guard<std::mutex> lg(bottleneck);
 
@@ -300,10 +324,10 @@ bool urx::Robot::update_TCP_pose(std::vector<double>& new_pose)
     // elements in set_qd with the recipe, so we cannot simply swap, we
     // need a per-element copy
     for (std::size_t i = 0; i < new_pose.size(); ++i)
-        set_TCP_pose[i] = new_pose[i];
+        TCP_pose_ref[i] = new_pose[i];
 
     in_seqnr = ++last_seqnr;
-    cmd = NEW_COMMAND;
+    cmd = NEW_TCP_POSE_REF_COMMAND;
     if (!rtdeh_->send(in->recipe_id())) {
         std::cout << "Sending to handler using " << in->recipe_id() << " failed" << std::endl;
         return false;
@@ -333,7 +357,7 @@ bool urx::Robot::update_w(std::vector<double>& new_w)
         set_qd[i] = new_w[i];
 
     in_seqnr = ++last_seqnr;
-    cmd = NEW_COMMAND;
+    cmd = NEW_CONTROL_INPUT_COMMAND;
     if (!rtdeh_->send(in->recipe_id())) {
         std::cout << "Sending to handler using " << in->recipe_id() << " failed" << std::endl;
         return false;
