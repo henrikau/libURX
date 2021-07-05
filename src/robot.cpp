@@ -7,6 +7,8 @@
  */
 #include <urx/robot.hpp>
 
+#include <future>   // For launching wait_for_q_ref() asynchronously
+
 #ifndef BOOST_LOG_DYN_LINK
 #define BOOST_LOG_DYN_LINK
 #endif
@@ -132,6 +134,8 @@ bool urx::Robot::init_output_TCP_pose()
         return false;
 
     // Registers for reading results of inverse kinematic calculations
+    if (!out->add_field("output_int_register_1", &q_ref_out_seqnr_buf))
+        return false;
     if (!out->add_field("output_double_register_0", &q_ref_buf[0]))
         return false;
     if (!out->add_field("output_double_register_1", &q_ref_buf[1]))
@@ -214,17 +218,17 @@ bool urx::Robot::recv()
         ur_state.local_ts_us = std::chrono::duration_cast<std::chrono::microseconds >(std::chrono::system_clock::now().time_since_epoch());
         ur_state.ur_ts = timestamp;
         ur_state.seqnr = out_seqnr;
+        q_ref_out_seqnr    = q_ref_out_seqnr_buf;
         for (std::size_t i = 0; i < urx::DOF; i++) {
+            ur_state.jq_ref[i]   = q_ref_buf[i];
             ur_state.jq[i]       = target_q[i];
             ur_state.jqd[i]      = target_qd[i];
             ur_state.jqdd[i]     = target_qdd[i];
             ur_state.jt[i]       = target_moment[i];
             ur_state.tcp_pose[i] = target_TCP_pose[i];
-
-            q_ref[i] = q_ref_buf[i];
         }
         updated_state_ = true;
-
+        
         ts_log.push_back( std::tuple<std::chrono::microseconds, double>(ur_state.local_ts_us, ur_state.ur_ts) );
     }
 
@@ -308,12 +312,14 @@ bool urx::Robot::updated_state()
     return updated_state_;
 }
 
-bool urx::Robot::update_TCP_pose_ref(std::vector<double>& new_pose)
+bool urx::Robot::calculate_q_ref(std::vector<double>& new_pose)
 {
-    std::lock_guard<std::mutex> lg(bottleneck);
+    std::unique_lock<std::mutex> lk(bottleneck);
 
-    if (new_pose.size() != DOF)
+    if (new_pose.size() != DOF){
+        std::cout << "Wrong size on new TCP pose\n";
         return false;
+    }
 
     if (!in_initialized_) {
         BOOST_LOG_TRIVIAL(error) << __func__ << "() init_input() not completed successfully yet" << std::endl;
@@ -335,15 +341,51 @@ bool urx::Robot::update_TCP_pose_ref(std::vector<double>& new_pose)
 
     cmd = NO_COMMAND;
 
+    uint32_t this_seqnr = in_seqnr;
+    lk.unlock();
+
+    // The first time q_ref is calculated the waiting for the results should be blocking
+    if(q_ref_initialized_){
+        // Perhaps simpler to run wait_for_q_ref body directly as a lambda expression in this call and remove the function
+        auto ignore = std::async(std::launch::async,  &urx::Robot::wait_for_q_ref, this, this_seqnr);
+    } else {
+
+        wait_for_q_ref(this_seqnr);
+
+        // q_ref_initialized is only evaluated in calculate_q_ref, which is only called in 
+        // the main thread, so locks are probably not needed here, but it is good measure
+        lk.lock();
+        q_ref_initialized_ = true;
+        lk.unlock();
+    }
+
     return true;
 }
 
-bool urx::Robot::update_w(std::vector<double>& new_w)
+// It is possible to both throw an exception here or use a return val.
+// Both can be retrieved through the return val of std::async
+void urx::Robot::wait_for_q_ref(uint32_t q_ref_in_seqnr)
 {
+    std::unique_lock<std::mutex> lk(bottleneck);
+    auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+    int attempts = 100; // New messages should arrive with 500Hz
+    for(int i = 0; i < attempts; i++){
+        if (cv.wait_until(lk, timeout, [&] { return q_ref_out_seqnr == q_ref_in_seqnr; })) {
+            return;
+        }
+    }
+
+    BOOST_LOG_TRIVIAL(error) << __func__ << "() never received q_ref from remote with seqnr " << q_ref_in_seqnr;
+}
+
+bool urx::Robot::update_w(std::vector<double>& new_w)
+{   
     std::lock_guard<std::mutex> lg(bottleneck);
 
-    if (new_w.size() != DOF)
+    if (new_w.size() != DOF){
+        std::cout << "Wrong size on new w\n";
         return false;
+    }
 
     if (!in_initialized_) {
         BOOST_LOG_TRIVIAL(error) << __func__ << "() init_input() not completed successfully yet" << std::endl;

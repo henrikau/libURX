@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
     }
 
     // Robot startup
-    urx::Robot robot = urx::Robot(ip4);
+    //urx::Robot robot = urx::Robot(ip4);
+    urx::Robot robot(ip4);
     if (!robot.init_output_TCP_pose() ||
         !robot.init_input_TCP_pose() ||
         !robot.upload_script(sfile))   {
@@ -90,31 +91,32 @@ int main(int argc, char *argv[])
     }
 
 
-//    // target pose for TCP in base frame
-//    // x,y,z [m]  ,   rx,ry,rz [rad]
-//    std::vector<double> start_pose(urx::DOF);
-//    start_pose[0] =  0.43;
-//    start_pose[1] = -0.57;
-//    start_pose[2] =  0.58;
-//    start_pose[3] =  1.4;
-//    start_pose[4] = -1.1;
-//    start_pose[5] =  1.3;
+    // target pose for TCP in base frame
+    // [x,y,z,rx,ry,rz], translation is given in [m] and rotation in [rad] with axis-angle representation.
+    std::vector<double> start_pose(urx::DOF);
+    start_pose[0] =  0.43;
+    start_pose[1] = -0.57;
+    start_pose[2] =  0.58;
+    start_pose[3] =  1.4;
+    start_pose[4] = -1.1;
+    start_pose[5] =  1.3;
 //    //start_pose[3] = urx::deg_to_rad( 90.0);
 //    //start_pose[4] = urx::deg_to_rad(    0);
 //    //start_pose[5] = urx::deg_to_rad(    0);
 //
-    std::vector<double> q_ref(urx::DOF);
+
     std::vector<double> end_pose(urx::DOF);
-    end_pose[0] =  0.6;
-    end_pose[1] = -0.6;
-    end_pose[2] =  0.6;
-    end_pose[3] = urx::deg_to_rad( 90.0);
-    end_pose[4] = urx::deg_to_rad(    0);
-    end_pose[5] = urx::deg_to_rad(    0);
-//
-//    std::vector<std::vector<double>> target_poses = trace_linear(start_pose, end_pose, 100);
-//
-//    int step = 0;
+    end_pose[0] =  0.9;
+    end_pose[1] = -0.7;
+    end_pose[2] =  0.8;
+    end_pose[3] =  1.8;
+    end_pose[4] = -2.6;
+    end_pose[5] =  2.5;
+
+    std::vector<std::vector<double>> target_poses = trace_linear(start_pose, end_pose, 100);
+    int step = 0;
+    auto timestamp = std::chrono::system_clock::now().time_since_epoch();
+
 //
 //    urx::Robot_State state;
 //    for(int i = 0; i < (int)target_poses.size(); i++){
@@ -132,52 +134,69 @@ int main(int argc, char *argv[])
 //        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 //    }
 
-    robot.update_TCP_pose_ref(end_pose);
-    sleep(5);
-    double* q_ref_arr = robot.get_q_ref();
-    for(int i = 0; i < (int)q_ref.size(); i++){
-        q_ref[i] = q_ref_arr[i];
-        std::cout << q_ref[i] << " ";
-    }
-    std::cout << std::endl;
-
-    // target position for joints
-    //q_ref[urx::BASE]     = urx::deg_to_rad( 180.0);
-    //q_ref[urx::SHOULDER] = urx::deg_to_rad(-135.0);
-    //q_ref[urx::ELBOW]    = urx::deg_to_rad(  90.0);
-    //q_ref[urx::W1]       = urx::deg_to_rad( -90.0);
-    //q_ref[urx::W2]       = urx::deg_to_rad(  90.0);
-    //q_ref[urx::W3]       = urx::deg_to_rad( -90.0);
+    robot.calculate_q_ref(target_poses[step]);
 
     while (running) {
-//        urx::Robot_State state = robot.state();
-//
-//        double err;
-//        for(int j = 0; j < (int)state.tcp_pose.size(); j++){
-//            err = target_poses.back()[j] - state.tcp_pose[j];
-//            std::cout << std::setw(14) << std::left << err << " ";
-//        }
-//        std::cout << "   " << step++ << std::endl;
-//
-//        // if all errors are ok, we are done
-//        if (close_vec(state.tcp_pose, end_pose, 0.0001)) {
-//            running = false;
-//        }
-//        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
         urx::Robot_State state = robot.state();
+
+       // if (close_vec(state.jq, state.jq_ref, 1) && ((step+1) < (int)target_poses.size())) {
+       //     step++;
+       //     robot.calculate_q_ref(target_poses[step]);
+       // } 
+
+        // Send new tcp pose ref each 100ms
+        auto now = std::chrono::system_clock::now().time_since_epoch();
+        std::chrono::duration<double> diff = now - timestamp;
+        if ( (diff.count() > 0.1) && ((step+1) < (int)target_poses.size())){
+            timestamp = now;
+            step++;
+            robot.calculate_q_ref(target_poses[step]);
+        }
+
+        // Calculate new angular speed for each joint
         for (std::size_t i = 0; i < urx::DOF; ++i) {
-            double err = q_ref[i] - state.jq[i];
+            double err = state.jq_ref[i] - state.jq[i];
             w[i] = new_speed(err, prev_err[i], w[i]);
             prev_err[i] = err;
         }
 
+        //for(int i = 0; i < (int)state.tcp_pose.size(); i++){
+        //    std::cout << state.tcp_pose[i] << " ";
+        //}
+        //std::cout << std::endl;
+        //for(int i = 3; i < (int)state.tcp_pose.size(); i++){
+        //    std::cout << target_poses[step][i] - state.tcp_pose[i] << " ";
+        //}
+        //std::cout << std::endl << std::endl;
+
         // if all errors are ok, we are done (check errors in q_ref or tcp_pose_ref?)
-        if (close_vec(state.jq, q_ref, 0.0001)) {
+        if ((step+1) == (int)target_poses.size() && 
+            close_vec(state.jq_ref, state.jq, 0.01)) {
             running = false;
-            for (std::size_t i = 0; i < urx::DOF; ++i)
+            for (std::size_t i = 0; i < urx::DOF; ++i){
                 w[i] = 0.0;
-        }
+            }
+
+            std::cout << "\njq_state: ";
+            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
+               std::cout << state.jq[i]/3.14*180 << " ";
+            }
+            std::cout << "\njq_ref:   ";
+            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
+               std::cout << state.jq_ref[i]/3.14*180 << " ";
+            }
+            std::cout << "\ntcp_state: ";
+            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
+               std::cout << std::setw(10) << state.tcp_pose[i] << " ";
+            }
+            std::cout << "\ntcp_ref: ";
+            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
+               std::cout << std::setw(10) << target_poses[step][i] << " ";
+            }
+            std::cout << std::endl << std::endl;
+        } 
+
+        //std::cout << "setting speed " << cout++ << std::endl;
         robot.update_w(w);
     }
 

@@ -1,8 +1,13 @@
 # Summary:
 # input_integer_register_0  : seqnr of latest update
-# input_integer_register_1  : 1: stop robot, 2: new control input, 3: do inverse kinematic calculations
+# input_integer_register_1  : next command register
 # output_integer_register_0 : seqnr of latest update
 # output_integer_register_1 : seqnr of latest joint position calculations
+
+# Commands:
+# 1: stop robot
+# 2: new control input
+# 3: do inverse kinematic calculations
 
 # Control input:
 # input_double_register_0 : base_rad/s
@@ -88,6 +93,8 @@ def speedj_rtde_prog():
                 write_output_float_register(5, q_ref[5])
 
                 write_output_integer_register(1, TCP_pose_seqnr)
+
+                #textmsg("Inverse kinematic results written")
 
                 do_calculations = False
             end

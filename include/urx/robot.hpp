@@ -33,6 +33,7 @@ namespace urx {
             dof(DOF),
             ur_ts(0),
             seqnr(0),
+            jq_ref(DOF),
             jq(DOF),
             jqd(DOF),
             jqdd(DOF),
@@ -46,10 +47,11 @@ namespace urx {
             ur_ts(a.ur_ts),
             seqnr(a.seqnr)
         {
-            jq = a.jq;
-            jqd = a.jqd;
-            jqdd = a.jqdd;
-            jt = a.jt;
+            jq_ref = a.jq_ref;
+            jq     = a.jq;
+            jqd    = a.jqd;
+            jqdd   = a.jqdd;
+            jt     = a.jt;
 
             tcp_pose = a.tcp_pose;
         };
@@ -60,10 +62,11 @@ namespace urx {
             ur_ts = a.ur_ts;
             seqnr = a.seqnr;
             for (std::size_t i = 0; i < DOF; i++) {
-                jq[i]   = a.jq[i];
-                jqd[i]  = a.jqd[i];
-                jqdd[i] = a.jqdd[i];
-                jt[i]   = a.jt[i];
+                jq_ref[i] = a.jq_ref[i];
+                jq[i]     = a.jq[i];
+                jqd[i]    = a.jqd[i];
+                jqdd[i]   = a.jqdd[i];
+                jt[i]     = a.jt[i];
 
                 tcp_pose[i] = a.tcp_pose[i];
             }
@@ -82,6 +85,7 @@ namespace urx {
         int32_t seqnr;
 
         // angle for each joint
+        std::vector<double> jq_ref;
         std::vector<double> jq;
         std::vector<double> jqd;
         std::vector<double> jqdd;
@@ -102,7 +106,9 @@ namespace urx {
             running_(false),
             dut_(false),
             updated_state_(false),
+            q_ref_initialized_(false),
             last_seqnr(0),
+            q_ref_out_seqnr(0),
             ur_state(Robot_State()),
             ts_log_debug(false)
 
@@ -173,14 +179,17 @@ namespace urx {
         bool updated_state();
         
         /**
-         * \brief set new reference for Tool Center Point pose. 
+         * \brief Asynchronously sets new reference for Tool Center Point pose. 
          * 
-         * Triggers inverse kinematic calculations in URScript for finding 
-         * corresponding joint angle references
+         * Triggers inverse kinematic calculations in URScript for finding corresponding joint
+         * angle references. q_ref is updated asynchronously through recv() and can be accessed 
+         * through state(). If q_ref is initialized then wait_for_q_ref() is run asynchronously,
+         * if not it blocks.
          *
-         * \return true if valid and successfully sent to remote.
+         * \return true if valid and successfully sent to remote 
+         * (q_ref is not necessarily successfully received yet).
          */
-        bool update_TCP_pose_ref(std::vector<double>& new_pose);
+        bool calculate_q_ref(std::vector<double>& new_pose);
 
         /**
          * \brief set new target joint speed (angular)
@@ -253,7 +262,8 @@ namespace urx {
         */
         void set_dut() { dut_ = true; };
 
-        double* get_q_ref(){ return q_ref;};
+        // Debugging functions
+        void print_seqnr(){ std::cout << "In: " << in_seqnr << "   Out: " << out_seqnr << "   last: " << last_seqnr << std::endl;};
 
     private:
         /**
@@ -276,6 +286,14 @@ namespace urx {
          */
         Robot_State loc_state();
 
+        /**
+         * \brief Waits for receiving q_ref from URScript with seqnr q_ref_in_seqnr.
+         * 
+         * This function is called asynchronously in calculate_q_ref(). Writes to log if
+         * q_ref is not received in time.
+         */
+        void wait_for_q_ref(uint32_t q_ref_in_seqnr);        
+
         URX_Handler *urxh_;
         RTDE_Handler *rtdeh_;
         bool out_initialized_;
@@ -294,10 +312,11 @@ namespace urx {
         std::condition_variable start_cv;
 
         bool updated_state_; // new state arrived since last state()
+        bool q_ref_initialized_;
 
         uint32_t last_seqnr;
 
-        // state, registred with handler through input/output recipes
+        // Robot output, registred with handler through input/output recipes
         uint32_t out_seqnr;
         double timestamp;
         double target_q[DOF];
@@ -305,16 +324,15 @@ namespace urx {
         double target_qdd[DOF];
         double target_moment[DOF];
         double target_TCP_pose[DOF];
+        double q_ref_buf[DOF];      // To avoid race conditions
+        uint32_t q_ref_out_seqnr;
+        uint32_t q_ref_out_seqnr_buf;   // To avoid race conditions
 
-        // Control input
-        int32_t in_seqnr;
+        // Robot input
+        uint32_t in_seqnr;
         int32_t cmd;
         double set_qd[DOF];
-
-        // State reference
-        double q_ref[DOF];
-        double q_ref_buf[DOF];      // To avoid race conditions
-        double TCP_pose_ref[DOF];
+        double TCP_pose_ref[DOF];     
 
         Robot_State ur_state;
         std::vector<std::tuple<std::chrono::microseconds, double>> ts_log;
