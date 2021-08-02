@@ -254,9 +254,9 @@ urx::Robot_State urx::Robot::state(bool synchronous)
         bottleneck.unlock();
     } else {
         std::unique_lock<std::mutex> lk(bottleneck);
-        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-        if (!cv.wait_until(lk, timeout, [&] { return updated_state_; })) {
-            BOOST_LOG_TRIVIAL(error) << __func__ << "() wait_until FAILED, did not receive a state-update" << std::endl;
+        auto timeout = std::chrono::milliseconds(100);
+        if (!cv.wait_for(lk, timeout, [&] { return updated_state_; })) {
+            BOOST_LOG_TRIVIAL(error) << __func__ << "() wait_for FAILED, did not receive a state-update" << std::endl;
             return out;
         }
         out = loc_state();
@@ -367,15 +367,15 @@ bool urx::Robot::calculate_q_ref(std::vector<double>& new_pose)
 void urx::Robot::wait_for_q_ref(uint32_t q_ref_in_seqnr)
 {
     std::unique_lock<std::mutex> lk(bottleneck);
-    auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-    int attempts = 100; // New messages should arrive with 500Hz
+    auto timeout = std::chrono::milliseconds(20);
+    int attempts = 500; // New messages should arrive with 500Hz
     for(int i = 0; i < attempts; i++){
-        if (cv.wait_until(lk, timeout, [&] { return q_ref_out_seqnr == q_ref_in_seqnr; })) {
+        if (cv.wait_for(lk, timeout, [&] { return q_ref_out_seqnr == q_ref_in_seqnr; })) {
             return;
         }
     }
 
-    BOOST_LOG_TRIVIAL(error) << __func__ << "() never received q_ref from remote with seqnr " << q_ref_in_seqnr;
+    BOOST_LOG_TRIVIAL(error) << __func__ << "() never received q_ref from remote with seqnr " << q_ref_in_seqnr << "(probably too few attempts used)\n";
 }
 
 bool urx::Robot::update_w(std::vector<double>& new_w)
@@ -437,8 +437,8 @@ bool urx::Robot::start_(Func f)
     // Wait here until receiver has started and is ready
     {
         std::unique_lock<std::mutex> lk(bottleneck);
-        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-        if (!start_cv.wait_until(lk, timeout, [&] { return updated_state_; })) {
+        auto timeout = std::chrono::milliseconds(100);
+        if (!start_cv.wait_for(lk, timeout, [&] { return updated_state_; })) {
             BOOST_LOG_TRIVIAL(error) << __func__ << "() Failed waiting for udpated state (timeout)" << std::endl;
             return false;
         }

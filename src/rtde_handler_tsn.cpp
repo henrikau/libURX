@@ -41,8 +41,8 @@ bool urx::RTDE_Handler::start_tsn_proxy()
 
     {
         std::unique_lock<std::mutex> lk(bottleneck);
-        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-        if (!tsn_cv.wait_until(lk, timeout, [&] { return proxy_running; })) {
+        auto timeout = std::chrono::milliseconds(100);
+        if (!tsn_cv.wait_for(lk, timeout, [&] { return proxy_running; })) {
             std::cerr << __func__  << "() Creating proxy-worker FAILED" << std::endl;
             return false;
         }
@@ -56,10 +56,10 @@ void urx::RTDE_Handler::tsn_worker()
     // directly to robot via rtde
     {
         std::unique_lock<std::mutex> lk(bottleneck);
-        auto timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-        if (!tsn_cv.wait_until(lk, timeout, [&] { return proxy_running; })) {
+        auto timeout = std::chrono::milliseconds(100);
+        if (!tsn_cv.wait_for(lk, timeout, [&] { return proxy_running; })) {
             std::cerr << __func__  << "() Creating rtde_worker FAILED, tsn_worker will abort" << std::endl;
-            return ;
+            return;
         }
     }
 
