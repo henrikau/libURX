@@ -262,8 +262,8 @@ namespace urx {
         */
         void set_dut() { dut_ = true; };
 
-        // Debugging functions
-        void print_seqnr(){ std::cout << "In: " << in_seqnr << "   Out: " << out_seqnr << "   last: " << last_seqnr << std::endl;};
+        // Returns the value of q_ref_initialized_
+        bool q_ref_initialized() const {return q_ref_initialized_; };
 
     private:
         /**
@@ -287,10 +287,11 @@ namespace urx {
         Robot_State loc_state();
 
         /**
-         * \brief Waits for receiving q_ref from URScript with seqnr q_ref_in_seqnr.
+         * \brief Monitors whether the results from inverse cinematic calculations in URScript are received in time.
          * 
-         * This function is called asynchronously in calculate_q_ref(). Writes to log if
-         * q_ref is not received in time.
+         * This function is called asynchronously in calculate_q_ref(),
+         * unless it is the first time it is called, then the waiting 
+         * is synchronous. Writes to log if q_ref is not received in time.
          */
         void wait_for_q_ref(uint32_t q_ref_in_seqnr);        
 
@@ -312,7 +313,7 @@ namespace urx {
         std::condition_variable start_cv;
 
         bool updated_state_; // new state arrived since last state()
-        bool q_ref_initialized_;
+        std::atomic<bool>  q_ref_initialized_;
 
         uint32_t last_seqnr;
 
@@ -324,7 +325,7 @@ namespace urx {
         double target_qdd[DOF];
         double target_moment[DOF];
         double target_TCP_pose[DOF];
-        double q_ref_buf[DOF];      // To avoid race conditions
+        double q_ref_buf[DOF];          // To avoid race conditions
         uint32_t q_ref_out_seqnr;
         uint32_t q_ref_out_seqnr_buf;   // To avoid race conditions
 

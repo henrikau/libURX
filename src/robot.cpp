@@ -342,7 +342,7 @@ bool urx::Robot::calculate_q_ref(std::vector<double>& new_pose)
     cmd = NO_COMMAND;
 
     uint32_t this_seqnr = in_seqnr;
-    lk.unlock();
+    lk.unlock();    // No longer needed to hold lock and must not hold it when waiting in the else block
 
     // The first time q_ref is calculated the waiting for the results should be blocking
     if(q_ref_initialized_){
@@ -351,12 +351,7 @@ bool urx::Robot::calculate_q_ref(std::vector<double>& new_pose)
     } else {
 
         wait_for_q_ref(this_seqnr);
-
-        // q_ref_initialized is only evaluated in calculate_q_ref, which is only called in 
-        // the main thread, so locks are probably not needed here, but it is good measure
-        lk.lock();
         q_ref_initialized_ = true;
-        lk.unlock();
     }
 
     return true;

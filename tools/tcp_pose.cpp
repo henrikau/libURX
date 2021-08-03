@@ -77,7 +77,6 @@ int main(int argc, char *argv[])
     }
 
     // Robot startup
-    //urx::Robot robot = urx::Robot(ip4);
     urx::Robot robot(ip4);
     if (!robot.init_output_TCP_pose() ||
         !robot.init_input_TCP_pose() ||
@@ -100,10 +99,6 @@ int main(int argc, char *argv[])
     start_pose[3] =  1.4;
     start_pose[4] = -1.1;
     start_pose[5] =  1.3;
-//    //start_pose[3] = urx::deg_to_rad( 90.0);
-//    //start_pose[4] = urx::deg_to_rad(    0);
-//    //start_pose[5] = urx::deg_to_rad(    0);
-//
 
     std::vector<double> end_pose(urx::DOF);
     end_pose[0] =  0.9;
@@ -117,28 +112,12 @@ int main(int argc, char *argv[])
     int step = 0;
     auto timestamp = std::chrono::system_clock::now().time_since_epoch();
 
-//
-//    urx::Robot_State state;
-//    for(int i = 0; i < (int)target_poses.size(); i++){
-//        state = robot.state();
-//
-//        double err;
-//        for(int j = 0; j < (int)target_poses[i].size(); j++){
-//            err = target_poses[i][j] - state.tcp_pose[j];
-//            std::cout << std::setw(14) << std::left << err << " ";
-//        }
-//        std::cout << "   " << step++ << std::endl;
-//        
-//        robot.update_TCP_pose_ref(target_poses[i]);
-//
-//        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-//    }
-
     robot.calculate_q_ref(target_poses[step]);
 
     while (running) {
         urx::Robot_State state = robot.state();
 
+        // Send new tcp pose ref when we are sufficiently close to the current reference
        // if (close_vec(state.jq, state.jq_ref, 1) && ((step+1) < (int)target_poses.size())) {
        //     step++;
        //     robot.calculate_q_ref(target_poses[step]);
@@ -153,47 +132,28 @@ int main(int argc, char *argv[])
             robot.calculate_q_ref(target_poses[step]);
         }
 
-        // Calculate new angular speed for each joint
-        for (std::size_t i = 0; i < urx::DOF; ++i) {
-            double err = state.jq_ref[i] - state.jq[i];
-            w[i] = new_speed(err, prev_err[i], w[i]);
-            prev_err[i] = err;
+        if(robot.q_ref_initialized()){
+            // Calculate new angular speed for each joint
+            for (std::size_t i = 0; i < urx::DOF; ++i) {
+                double err = state.jq_ref[i] - state.jq[i];
+                w[i] = new_speed(err, prev_err[i], w[i]);
+                prev_err[i] = err;
+            }
+        } else{
+            // If control reference is not valid yet, dont move
+            w = {0,0,0,0,0,0};
         }
 
-        //for(int i = 0; i < (int)state.tcp_pose.size(); i++){
-        //    std::cout << state.tcp_pose[i] << " ";
-        //}
-        //std::cout << std::endl;
-        //for(int i = 3; i < (int)state.tcp_pose.size(); i++){
-        //    std::cout << target_poses[step][i] - state.tcp_pose[i] << " ";
-        //}
-        //std::cout << std::endl << std::endl;
-
-        // if all errors are ok, we are done (check errors in q_ref or tcp_pose_ref?)
+        // if we have reached the final control reference, we are done
         if ((step+1) == (int)target_poses.size() && 
             close_vec(state.jq_ref, state.jq, 0.01)) {
             running = false;
+
+            // Simply send zero input (should not be needed if robot.stop() sends stop_robot cmd (which is not implemented yet)?)
+            // This simple method also requires this for-loop to be at the end of the controller while-loop
             for (std::size_t i = 0; i < urx::DOF; ++i){
                 w[i] = 0.0;
             }
-
-            std::cout << "\njq_state: ";
-            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
-               std::cout << state.jq[i]/3.14*180 << " ";
-            }
-            std::cout << "\njq_ref:   ";
-            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
-               std::cout << state.jq_ref[i]/3.14*180 << " ";
-            }
-            std::cout << "\ntcp_state: ";
-            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
-               std::cout << std::setw(10) << state.tcp_pose[i] << " ";
-            }
-            std::cout << "\ntcp_ref: ";
-            for(int i = 0; i < (int)state.tcp_pose.size(); i++){
-               std::cout << std::setw(10) << target_poses[step][i] << " ";
-            }
-            std::cout << std::endl << std::endl;
         } 
 
         //std::cout << "setting speed " << cout++ << std::endl;
