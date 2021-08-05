@@ -410,6 +410,11 @@ bool urx::Robot::stop()
     if (!running_)
         return false;
 
+    in_seqnr = ++last_seqnr;
+    cmd = STOP_COMMAND;
+    if (!rtdeh_->send(in->recipe_id())) {
+        std::cout << "Sending STOP command to handler using " << in->recipe_id() << " failed" << std::endl;
+    }
     running_ = false;
     receiver.join();
     rtdeh_->stop();
