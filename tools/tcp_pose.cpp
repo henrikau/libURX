@@ -13,14 +13,15 @@
 #include <thread>
 #include <iomanip> 
 
+constexpr int poseDimension = 6;
 
 std::vector<std::vector<double>> trace_linear(std::vector<double> start_pose, std::vector<double> end_pose, int steps){
 
     std::vector<std::vector<double>> target_poses(steps);
-    std::vector<double> pose(urx::DOF);
+    std::vector<double> pose(poseDimension);
 
     for(int i = 0; i < steps; i++){
-        for(int j = 0; j < (int)urx::DOF; j++){
+        for(int j = 0; j < poseDimension; j++){
             pose[j] = start_pose[j] + i*(end_pose[j] - start_pose[j]) / (steps-1);
         }
         target_poses[i] = pose;
@@ -89,10 +90,9 @@ int main(int argc, char *argv[])
         return 3;
     }
 
-
     // target pose for TCP in base frame
     // [x,y,z,rx,ry,rz], translation is given in [m] and rotation in [rad] with axis-angle representation.
-    std::vector<double> start_pose(urx::DOF);
+    std::vector<double> start_pose(poseDimension);
     start_pose[0] =  0.43;
     start_pose[1] = -0.57;
     start_pose[2] =  0.58;
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     start_pose[4] = -1.1;
     start_pose[5] =  1.3;
 
-    std::vector<double> end_pose(urx::DOF);
+    std::vector<double> end_pose(poseDimension);
     end_pose[0] =  0.9;
     end_pose[1] = -0.7;
     end_pose[2] =  0.8;
