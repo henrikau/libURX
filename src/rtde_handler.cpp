@@ -105,7 +105,14 @@ bool urx::RTDE_Handler::register_recipe(urx::RTDE_Recipe *r)
         out = r;
     } else {
         recipes_in.insert({r->recipe_id(), r});
+
+        // Clearing input registers on robot controller, assuming variables in recipe are initialized properly. If not done, it may read stuff from previous time robot was run.
+        if (!send(r->recipe_id())) {
+            std::cout << "Initial sending to handler using " << r->recipe_id() << " failed" << std::endl;
+            return false;
+        }
     }
+
     return true;
 }
 
