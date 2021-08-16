@@ -109,6 +109,8 @@ namespace urx {
             q_ref_initialized_(false),
             last_seqnr(0),
             q_ref_out_seqnr(0),
+            in_seqnr(1),
+            cmd(NO_COMMAND),
             ur_state(Robot_State()),
             ts_log_debug(false)
 
@@ -183,8 +185,8 @@ namespace urx {
          * 
          * Triggers inverse kinematic calculations in URScript for finding corresponding joint
          * angle references. q_ref is updated asynchronously through recv() and can be accessed 
-         * through state(). If q_ref is initialized then wait_for_q_ref() is run asynchronously,
-         * if not it blocks.
+         * through state(). If q_ref is initialized by a previous call to calculate_q_ref() then 
+         * wait_for_q_ref() is run asynchronously, if not it blocks.
          *
          * \return true if valid and successfully sent to remote 
          * (q_ref is not necessarily successfully received yet).
