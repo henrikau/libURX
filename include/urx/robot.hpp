@@ -202,6 +202,10 @@ namespace urx {
 
         /**
          * \brief initalize robot, create recipes and prepare for start
+         * 
+         * \pre The variables connected to the input recipe must be properly initialized before init_input() is called,
+         * such that the UR script does not perform unexpected actions due to poorly initialized input registers. Also, for the
+         * same reason init_input() should be called before upload_script().
          *
          * \return true if all worked as expected
          */
@@ -212,6 +216,10 @@ namespace urx {
         /**
          * \brief initalize robot, create recipes for controlling Tool Center Point pose and prepare for start
          *
+         * \pre The variables connected to the input recipe must be properly initialized before init_input_TCP_pose() is called,
+         * such that the UR script does not perform unexpected actions due to poorly initialized input registers. Also, for the
+         * same reason init_input_TCP_pose() should be called before upload_script().
+         * 
          * As TCP pose is a part of the robot state then init_output_TCP_pose() should
          * probably not be a separate function. Instead, init_output() should handle updating the 
          * entire robot state, incl TCP pose: But this gave a test error during build.
@@ -223,7 +231,9 @@ namespace urx {
 
         /**
          * \brief Upload new script to URController
-         *
+         * 
+         * \pre init_input() must be called before this function to initialize the input registers on the URController
+         * 
          * \return true on success.
          */
         bool upload_script(const std::string& script);
