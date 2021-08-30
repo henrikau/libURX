@@ -49,7 +49,9 @@ struct rtde_msg {
 	uint8_t mlength;
 	/* this is an array, but placed directly at this address, this
 	 * conveniently counts for \0 when allocating */
-	unsigned char msg;
+
+    // With latest version of gcc, this breaks, but clang is happy
+    unsigned char msg;
 } __attribute__((packed));
 
 
