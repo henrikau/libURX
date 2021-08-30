@@ -12,16 +12,20 @@ cat <<EOF
     -c clean
     -f (fast-)compile
     -t run tests
+    -I run INSTALL target
 EOF
 }
 export CTEST_OUTPUT_ON_FAILURE=1
 
-pushd "$(dirname $(realpath $0))/../"
+full_path=$(readlink -f "${0}")
+ROOT="$(dirname $(dirname ${full_path}))"
+BUILDPATH=${ROOT}/build
+INSTALLPATH=${BUILDPATH}/tmp
 
-test -d build || mkdir build/
-pushd build/ > /dev/null
+test -d ${BUILDPATH} || mkdir ${BUILDPATH}
+pushd "${BUILDPATH}"
 
-while getopts "acCft" o; do
+while getopts "acCftI" o; do
     case "${o}" in
 	'a')
 	    DO_CMAKE=1
@@ -41,6 +45,9 @@ while getopts "acCft" o; do
 	    usage
 	    exit 0
 	    ;;
+	'I')
+	    DO_INSTALL=1
+	    ;;
 	't')
 	    DO_TEST=1
 	    ;;
@@ -51,16 +58,29 @@ while getopts "acCft" o; do
 	esac
 done
 
-#export CC=/usr/bin/clang
-#export CXX=/usr/bin/clang++
-export CC=/usr/bin/gcc
-export CXX=/usr/bin/g++
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+#export CC=/usr/bin/gcc
+#export CXX=/usr/bin/g++
+do_cmake ()
+{
+    pushd "${BUILDPATH}" > /dev/null
+    cmake .. \
+	  -DCMAKE_INSTALL_PREFIX="${INSTALLPATH}" \
+	  -DCMAKE_INSTALL_INCLUDEDIR="${INSTALLPATH}" \
+	  -DCMAKE_INSTALL_LIBDIR=lib \
+	  -DCMAKE_INSTALL_INCLUDEDIR=include \
+	  -DALT_LIBS="external/usr" \
+	  -DEXAMPLES=ON
 
-test -z ${DO_CMAKE} || cmake .. -DALT_LIBS="external/usr"
+    popd > /dev/null
+}
+
+test -z ${DO_CMAKE} || do_cmake
 test -z ${DO_CLEAN} || make clean
 test -z ${DO_MAKE} || time make -j$(nproc)
 test -z ${DO_TEST} || make test
+test -z ${DO_INSTALL} || make install
 
 
 popd > /dev/null 		# build
-popd > /dev/null # realpath...

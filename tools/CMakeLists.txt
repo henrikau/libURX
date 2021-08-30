@@ -28,6 +28,13 @@ endforeach(a)
 # Simple movej-script for send_script.cpp
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/simple_movej.script
   ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+# script to use in tandem with robot_speed
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/ur_speedj.script
+  ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+# script to use in tandem with tcp_poset
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tcp_pose.script
+  ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+
 
 # install sample UR-scripts
 install (FILES ../scripts/simple_movej.script DESTINATION share/liburx)
