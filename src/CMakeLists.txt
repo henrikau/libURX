@@ -61,4 +61,3 @@ set_target_properties (
   SOVERSION ${PROJECT_VERSION})
 
 install (TARGETS urx DESTINATION lib)
-install (DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.hpp")

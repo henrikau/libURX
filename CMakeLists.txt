@@ -92,3 +92,5 @@ if (DOXYGEN_FOUND)
 else (DOXYGEN_FOUND)
   message (WARNING "Doxygen must be installed in order to make documentation")
 endif (DOXYGEN_FOUND)
+
+install (DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h*")

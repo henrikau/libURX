@@ -38,3 +38,5 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tcp_pose.script
 
 # install sample UR-scripts
 install (FILES ../scripts/simple_movej.script DESTINATION share/liburx)
+install (FILES ../scripts/ur_speedj.script DESTINATION share/liburx)
+install (FILES ../scripts/tcp_pose.script DESTINATION share/liburx)
