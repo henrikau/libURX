@@ -6,7 +6,8 @@ if [[ ! -d build/ ]]; then
     mkdir -p "build/${INSTALL_PATH}"
     pushd build >/dev/null
     cmake .. \
-	  -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}"
+	  -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
+	  -DUSE_TSNLIB=1
 else
     pushd build >/dev/null
 fi
