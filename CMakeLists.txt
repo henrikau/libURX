@@ -29,7 +29,7 @@ set_cxx_flag("-pedantic")
 set_cxx_flag("-Wextra")
 set_cxx_flag("-Werror")
 set_cxx_flag("-Wfatal-errors")
-set_cxx_flag("-std=c++17")
+set_cxx_flag("-std=c++20")
 
 # FIXME: want to enable this, but this will hit you *hard*
 # set_cxx_flag("-fsanitize=address")

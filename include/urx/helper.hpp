@@ -35,7 +35,7 @@ union converter {
 };
 
 // read a 64 bit double in BE encoding and return host-valid
-double double_be(volatile double in)
+double double_be(double in)
 {
     union converter c1, c2;
     c1.val = in;
@@ -44,7 +44,7 @@ double double_be(volatile double in)
 }
 
 // take a host-enocded 64-bit double and return it as big-endian (network-order)
-double double_h(volatile double in)
+double double_h(double in)
 {
     union converter c1, c2;
     c1.val = in;
