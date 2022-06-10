@@ -161,7 +161,6 @@ BOOST_AUTO_TEST_CASE(test_handler_recipe)
     free(resp);
 }
 
-#if 0
 // test path from creating recipe to receivng data from UR
 BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
 {
@@ -207,10 +206,10 @@ BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
 
     //FIXME: final testing of getting this field.
     BOOST_CHECK_CLOSE(ts, 42.1337, 0.000001);
-    //BOOST_CHECK(h->getField<double>("timestamp") == 42.1337);
+    // BOOST_CHECK(h->getField<double>("timestamp") == 42.1337);
     free(resp);
 }
-#endif
+
 BOOST_AUTO_TEST_CASE(test_handler_do_start)
 {
     struct rtde_control_package_resp *resp = create_cp_resp();
