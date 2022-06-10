@@ -10,13 +10,6 @@ set (APPS
   measure_roundtrip
   tcp_pose
   )
-if (USE_TSN)
-  set (SRCS
-    ${SRCS}
-    tsn_rtde_proxy
-    rtde_tsn_client
-    )
-endif ()
 
 foreach(a ${APPS})
   add_executable (${a} ${a}.cpp)

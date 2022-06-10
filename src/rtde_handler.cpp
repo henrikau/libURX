@@ -139,8 +139,6 @@ urx::RTDE_Handler::start()
 bool
 urx::RTDE_Handler::stop()
 {
-    if (tsn_mode)
-        proxy_running = false;
     usleep(10000);
 
     struct rtde_header cp;
@@ -221,40 +219,3 @@ bool _set_dl(uint64_t runtime_ns, uint64_t dl_ns, uint64_t period_ns)
     attr.sched_period   = period_ns;
     return syscall(314, 0, &attr, flags) == 0;
 }
-
-#ifdef USE_TSN
-void urx::RTDE_Handler::rtde_worker()
-{
-    if (!socket_out->ready()) {
-        proxy_running = false;
-        tsn_cv.notify_all();
-        return;
-    }
-
-    if (!_set_dl(500 * US_IN_NS, 2 * MS_IN_NS, 2*MS_IN_NS)) {
-        std::cerr << __func__ << "() Failed setting deadline scheduler" << std::endl;
-        tsn_cv.notify_all();
-        return;
-    }
-
-    proxy_running = true;
-    tsn_cv.notify_all();
-
-    // signal robot controller to start stream
-    start();
-
-    // start worker, grab data and forward
-    while (proxy_running) {
-        int rcode = con_->do_recv(buffer_, 2048);
-        if (rcode < 0) {
-            proxy_running = false;
-            break;
-        }
-        // printf("Got %d byts of data from ur\n", rcode);
-        stream_out->add_data(buffer_, rcode);
-        stream_out->send();
-        parse_incoming_data((struct rtde_data_package *)buffer_);
-    }
-    std::cout << __func__ << "() worker stopped" << std::endl;
-}
-#endif

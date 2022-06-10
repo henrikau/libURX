@@ -20,11 +20,6 @@
 #include <urx/con.hpp>
 #include <urx/rtde_recipe.hpp>
 
-#ifdef USE_TSN
-#include <tsn/tsn_socket.hpp>
-#include <tsn/tsn_stream.hpp>
-#endif
-
 namespace urx
 {
     class RTDE_Handler : public Handler
@@ -34,7 +29,6 @@ public:
     RTDE_Handler(Con* c) :
         Handler(c),
         out(nullptr),
-        tsn_mode(false),
         proxy_running(false)
     {
         con_->do_connect();
@@ -43,16 +37,6 @@ public:
     RTDE_Handler(const std::string remote) :
         RTDE_Handler(new Con(remote, RTDE_PORT))
     {};
-
-#ifdef USE_TSN
-        RTDE_Handler(std::shared_ptr<tsn::TSN_Stream> talker,
-                     std::shared_ptr<tsn::TSN_Stream> listener) :
-            RTDE_Handler(new TSNCon(talker, listener))
-        {
-            tsn_mode = true;
-            // setup tsn
-        };
-#endif
 
     /**
      * \brief Set protoocol version (currently v2)
@@ -182,39 +166,6 @@ public:
     bool parse_incoming_data(struct rtde_data_package* data) { return parse_incoming_data(data, 0); }
     bool parse_incoming_data(struct rtde_data_package* data, unsigned long rx_ts);
 
-    bool enable_tsn_proxy(const std::string& ifname,
-                              int prio,
-                              const std::string& dst_mac, // talker
-                              const std::string& src_mac, // listener
-                              uint64_t sid_out,
-                              uint64_t sid_in)
-#ifdef USE_TSN
-        ;
-#else
-        {
-            (void) ifname;
-            (void) prio;
-            (void) dst_mac;
-            (void) src_mac;
-            (void) sid_out;
-            (void) sid_in;
-            throw std::runtime_error("Built without TSN support");
-        }
-#endif
-    /** Start Proxy workers
-     *
-     * It will in turn signal robot controller to start sending
-     * messages. Incoming frames will be forwarded to TSN stream.
-     */
-    bool start_tsn_proxy()
-#ifdef USE_TSN
-        ;
-#else
-        {
-            throw std::runtime_error("Built without TSN support");
-        }
-#endif
-
 private:
     RTDE_Recipe *out;
     std::unordered_map<int, RTDE_Recipe *> recipes_in;
@@ -224,19 +175,7 @@ private:
 
     void rtde_worker();
 
-    bool tsn_mode;
-#ifdef USE_TSN
-    std::shared_ptr<tsn::TSN_Talker> socket_out;
-    std::shared_ptr<tsn::TSN_Stream> stream_out;
-    std::shared_ptr<tsn::TSN_Listener> socket_in;
-    std::shared_ptr<tsn::TSN_Stream> stream_in;
-    void tsn_worker();
-#endif
-
-
     std::mutex bottleneck;
-    std::condition_variable tsn_cv;
-    std::thread tsn_proxy;
     std::thread rtde_proxy;
 
     bool proxy_running;

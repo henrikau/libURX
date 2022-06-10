@@ -20,16 +20,6 @@ set(TESTS
   urx_handler_test
   robot_test
   )
-if (USE_TSN)
-  set (LIBS
-    ${LIBS}
-    testlib
-    )
-  set(TESTS
-    ${TESTS}
-    rtde_handler_tsn_test
-    )
-endif ()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/ur_script_movej.script
   ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
