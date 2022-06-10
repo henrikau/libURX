@@ -174,8 +174,13 @@ public:
      * \brief Apply the registered recipe(s) to the incoming data.
      *
      * \return true if it managed to parse the incoming data
+     *
+     * @param data: received data
+     * @param rx_ts : local timestamp (from con) for when the data package was received
+     * @returns true if incoming data was parsed correctly
      */
-    bool parse_incoming_data(struct rtde_data_package* data);
+    bool parse_incoming_data(struct rtde_data_package* data) { return parse_incoming_data(data, 0); }
+    bool parse_incoming_data(struct rtde_data_package* data, unsigned long rx_ts);
 
     bool enable_tsn_proxy(const std::string& ifname,
                               int prio,

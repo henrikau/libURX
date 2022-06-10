@@ -35,7 +35,19 @@ namespace urx {
         virtual bool do_connect(bool nodelay = false);
 
         virtual int  do_send(void *sbuf, int ssz);
-        virtual int  do_recv(void *rbuf, int rsz);
+
+        /**
+         * do_recv() receive update from the robot
+         *
+         * @param rbuf : buffer to store incoming URx data into
+         * @param rsz : size of buffer
+         * @param ts : local timestamp (ns) for when frame was received.
+         *
+         * @returns: bytes stored in buffer
+         */
+        int  do_recv(void *rbuf, int rsz) { return do_recv(rbuf, rsz, NULL); };
+        virtual int  do_recv(void *rbuf, int rsz, unsigned long *ts);
+
         virtual int  do_send_recv(void *sbuf, int ssz, void *rbuf, int rsz);
 
         bool is_connected() { return connected_; }
@@ -62,7 +74,7 @@ namespace urx {
         virtual void disconnect();
         virtual bool do_connect(bool nodelay);
         virtual int  do_send(void *sbuf, int ssz);
-        virtual int  do_recv(void *rbuf, int rsz);
+        virtual int  do_recv(void *rbuf, int rsz, unsigned long *ts);
         virtual int  do_send_recv(void *sbuf, int ssz, void *rbuf, int rsz);
 
     private:
@@ -94,7 +106,7 @@ namespace urx {
             throw std::runtime_error("Built without TSN support");
         }
 
-        int do_recv(void *, int )
+        int do_recv(void *, int, unsigned long *)
         {
             throw std::runtime_error("Built without TSN support");
         }

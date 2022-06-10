@@ -331,6 +331,62 @@ BOOST_AUTO_TEST_CASE(test_handler_full_large_data)
     free(resp);
 }
 
+
+BOOST_AUTO_TEST_CASE(test_register_recv_timestamp)
+{
+    urx::RTDE_Recipe *r = new urx::RTDE_Recipe();
+    BOOST_ASSERT(!r->track_ts_ns(NULL));
+    unsigned long ts = 42;
+    BOOST_ASSERT(r->track_ts_ns(&ts));
+    BOOST_ASSERT(ts == 0);
+    delete r;
+}
+
+BOOST_AUTO_TEST_CASE(test_update_recv_timestamp)
+{
+    // Register for UR timestamp only
+    struct rtde_control_package_resp *resp = create_cp_resp();
+    _set_recipe_resp(resp, "DOUBLE", 7);
+    mock->set_recvBuf((unsigned char *)resp, (int)ntohs(resp->hdr.size));
+    mock->set_sendCode(42);
+
+    // Create recipe, register for UR Ts and recv-ts
+    urx::RTDE_Recipe *r = new urx::RTDE_Recipe();
+    double ur_ts = 0.0;
+    unsigned long ts = 42;
+    r->add_field("timestamp", &ur_ts);
+    r->track_ts_ns(&ts);
+    BOOST_ASSERT(h->register_recipe(r));
+
+    // Notify UR that we are ready
+    struct rtde_control_package_sp_resp cpr;
+    rtde_control_package_start((struct rtde_header *)&cpr);
+    cpr.hdr.size = htons(4);
+    cpr.accepted = true;
+    mock->set_recvBuf((unsigned char *)&cpr, ntohs(cpr.hdr.size));
+
+    BOOST_ASSERT(h->start());
+
+    // Assemble data package
+    struct rtde_data_package *dp = (struct rtde_data_package *)buf_;
+    double *ts_ptr = (double *)&dp->data;
+    *ts_ptr = urx::double_h(42.1337);
+
+    dp->hdr.type = RTDE_DATA_PACKAGE;
+    dp->recipe_id = 7;
+    dp->hdr.size = htons(sizeof(struct rtde_data_package) - 1 + r->expected_bytes());
+
+    mock->set_recvBuf(buf_, ntohs(dp->hdr.size));
+    mock->set_sendCode(42);
+    mock->set_recv_ts(12345);
+
+    BOOST_CHECK(h->recv());
+    BOOST_CHECK_CLOSE(ur_ts, 42.1337, 0.00001);
+    BOOST_ASSERT(ts == 12345);
+    h->stop();
+    delete r;
+}
+
 BOOST_AUTO_TEST_CASE(test_handler_input_recipe)
 {
     urx::RTDE_Recipe *in = new urx::RTDE_Recipe();

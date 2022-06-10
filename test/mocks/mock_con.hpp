@@ -44,19 +44,21 @@ namespace urx {
             return send_code;
         };
 
-        int do_recv(void* rbuf, int rsz)
+        int do_recv(void* rbuf, int rsz, unsigned long *rx_ns)
         {
             // avoid buffer overflows in test-harness
             if (rsz_ > rsz || rsz_ < 0 || rsz < 0)
                 return -1;
             memcpy(rbuf, rbuf_, rsz_);
+            if (rx_ns)
+                *rx_ns = rx_ns_;
             return rsz_;
         };
 
         int do_send_recv(void *sbuf, int sz, void *rbuf, int rsz)
         {
             if (do_send(sbuf, sz) >= 0)
-                return do_recv(rbuf, rsz);
+                return do_recv(rbuf, rsz, NULL);
             return -1;
         };
 
@@ -67,6 +69,7 @@ namespace urx {
             rbuf_ = rbuf;
             rsz_ = rsz;
         };
+        void set_recv_ts(int ts_ns) { rx_ns_ = ts_ns; };
 
         // Set a reference to a buffer into which sent frames will be stored.
         void set_sendBuffer(unsigned char *buf, int ssz)
@@ -80,6 +83,7 @@ namespace urx {
         int send_code;
         int ssz_;
         int rsz_;
+        unsigned long rx_ns_;
         unsigned char *sbuf_;
         unsigned char *rbuf_;
     };

@@ -156,7 +156,7 @@ urx::RTDE_Handler::stop()
 }
 
 bool
-urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
+urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data, unsigned long rx_ts)
 {
     if (!rtde_parse_data_package(data))
         return false;
@@ -171,7 +171,7 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
         // std::cout << "mismatch between expected bytes " << out->expected_bytes()<< " and actual "<< datasize << std::endl;
         return false;
     }
-    return out->parse(&data->data);
+    return out->parse(&data->data, rx_ts);
 }
 
 //              FIXME
@@ -180,11 +180,12 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data)
 // Once fixed, update doc in .hpp
 bool urx::RTDE_Handler::recv()
 {
-    int rcode = con_->do_recv(buffer_, 2048);
+    unsigned long ts;
+    int rcode = con_->do_recv(buffer_, 2048, &ts);
     if (rcode < 0)
         return false;
 
-    return parse_incoming_data((struct rtde_data_package *)buffer_);
+    return parse_incoming_data((struct rtde_data_package *)buffer_, ts);
 }
 
 bool urx::RTDE_Handler::send(int recipe_id)

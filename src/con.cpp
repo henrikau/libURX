@@ -10,6 +10,7 @@
 #include <iostream>
 #include <linux/tcp.h>
 #include <urx/header.hpp>
+#include <chrono>
 
 void urx::Con::disconnect()
 {
@@ -62,11 +63,15 @@ int urx::Con::do_send(void *sbuf, int ssz)
     return written_sz;
 }
 
-int urx::Con::do_recv(void *rbuf, int rsz)
+int urx::Con::do_recv(void *rbuf, int rsz, unsigned long *rx_ts)
 {
     struct sockaddr src_addr;
     socklen_t addrlen;
     auto read_sz = recvfrom(sock_, rbuf, rsz, 0, &src_addr, &addrlen);
+    // get timestamp from when frame was received
+    if (rx_ts)
+        *rx_ts = duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
     if (read_sz < rsz)
         ((unsigned char *)rbuf)[read_sz] = 0x00;
 

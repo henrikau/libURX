@@ -27,6 +27,7 @@ namespace urx
             bytes(0),
             dir_out_(true)
         {
+            ts_ns_ = nullptr;
             cpo = rtde_control_msg_get(125.0);
             cpi = rtde_control_get_in();
             dp_ = rtde_data_package_get();
@@ -34,6 +35,7 @@ namespace urx
 
         virtual ~RTDE_Recipe()
         {
+            ts_ns_ = nullptr;
             for (auto &t: fields)
                 delete t;
             rtde_control_msg_put(cpo);
@@ -45,6 +47,8 @@ namespace urx
         bool add_field(std::string name, void *storage);
         std::string get_fields();
 
+        bool track_ts_ns(unsigned long *ts_ns);
+
         /**
          * \brief Clear all fields stored in the recipe
          */
@@ -54,7 +58,8 @@ namespace urx
 
         bool register_response(struct rtde_control_package_resp* resp);
 
-        bool parse(unsigned char *buf);
+        bool parse(unsigned char *buf) { return parse(buf, 0); };
+        bool parse(unsigned char *buf, unsigned long ts);
         bool store(struct rtde_data_package *dp);
 
         bool active() { return active_; }
@@ -83,6 +88,10 @@ namespace urx
     private:
         bool active_;
         int recipe_id_;
+
+        // Timestamp for last complete update, either incoming or outgoing
+        unsigned long *ts_ns_;
+
         std::vector<RTDE_Recipe_Token *> fields;
         struct rtde_control_package_out *cpo;
         struct rtde_control_package_in *cpi;

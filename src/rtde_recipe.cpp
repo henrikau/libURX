@@ -35,6 +35,17 @@ urx::RTDE_Recipe::add_field(std::string name, void *storage)
     fields.push_back(token);
     return true;
 }
+bool
+urx::RTDE_Recipe::track_ts_ns(unsigned long *ts_ns)
+{
+    if (!ts_ns)
+        return false;
+    ts_ns_ = ts_ns;
+
+    // Reset value to have a known base
+    *ts_ns_ = 0;
+    return true;
+}
 
 std::string
 urx::RTDE_Recipe::get_fields()
@@ -111,7 +122,7 @@ urx::RTDE_Recipe::register_response(struct rtde_control_package_resp* resp)
 }
 
 bool
-urx::RTDE_Recipe::parse(unsigned char *buf)
+urx::RTDE_Recipe::parse(unsigned char *buf, unsigned long ts)
 {
     if (!buf || !dir_out_)
         return false;
@@ -120,6 +131,9 @@ urx::RTDE_Recipe::parse(unsigned char *buf)
         if (!t->parse(buf))
             return false;
 
+    // Update timestamp if it's being tracked
+    if (ts_ns_)
+        *ts_ns_ = ts;
     return true;
 }
 

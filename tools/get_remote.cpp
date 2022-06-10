@@ -13,19 +13,15 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include <chrono>
-
-// ugly, but makes using chrono a lot easier
-using namespace std::chrono;
 
 static int loopctr = 5000;
-void write_file(const char *fname, std::vector<std::tuple<long,double>> ts)
+void write_file(const char *fname, std::vector<std::tuple<unsigned long,double>> ts)
 {
     FILE *ts_log_fd = fopen(fname, "w");
-    fprintf(ts_log_fd, "ts_loc,ts_ur\n");
+    fprintf(ts_log_fd, "ts_loc_ns,ts_ur\n");
 
     for(const auto &i : ts) {
-        fprintf(ts_log_fd, "%ld,%f\n", std::get<0>(i), std::get<1>(i));
+        fprintf(ts_log_fd, "%lu,%f\n", std::get<0>(i), std::get<1>(i));
     }
 
     fflush(ts_log_fd);
@@ -76,9 +72,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    double ts;
+    double ur_ts;
+    unsigned long ts_ns;
     urx::RTDE_Recipe out = urx::RTDE_Recipe();
-    out.add_field("timestamp", &ts);
+
+    out.track_ts_ns(&ts_ns);
+    out.add_field("timestamp", &ur_ts);
+
     if (!h.register_recipe(&out)) {
         std::cerr << __func__ << ": Failed setting output_recipe!" << std::endl;
         return -1;
@@ -88,10 +88,11 @@ int main(int argc, char *argv[])
         out.recipe_id() << ", starting handler" << std::endl;
 
     h.start();
-    std::vector<std::tuple<long, double>> ts_set;
+    std::vector<std::tuple<unsigned long, double>> ts_set;
     for (int ctr = 0; ctr < loopctr; ctr++) {
-        h.recv();
-        ts_set.push_back(std::tuple<long, double>(duration_cast<microseconds >(system_clock::now().time_since_epoch()).count(), ts));
+        if (h.recv()) {
+            ts_set.push_back(std::tuple<unsigned long, double>(ts_ns, ur_ts));
+        }
     }
     h.stop();
 
