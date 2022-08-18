@@ -67,15 +67,23 @@ int urx::Con::do_recv(void *rbuf, int rsz, unsigned long *rx_ts)
 {
     struct sockaddr src_addr;
     socklen_t addrlen;
+    if (!rbuf)
+        return -2;
+
     auto read_sz = recvfrom(sock_, rbuf, rsz, 0, &src_addr, &addrlen);
-    // get timestamp from when frame was received
     if (rx_ts)
         *rx_ts = duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
+    if (read_sz < 0) {
+        printf("\nsock_=%d, rbuf=%p, rsz=%d\n", sock_, rbuf, rsz);
+        perror("recvfrom failed!");
+        return read_sz;
+    }
+
+    // make sure we 0-terminate string (much faster than zeroing entire
+    // buffer before recvfrom()
     if (read_sz < rsz)
         ((unsigned char *)rbuf)[read_sz] = 0x00;
-
-    // FIXME: make sure we get from correct address..
 
     return read_sz;
 }

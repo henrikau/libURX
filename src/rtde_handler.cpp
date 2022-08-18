@@ -180,8 +180,10 @@ bool urx::RTDE_Handler::recv()
 {
     unsigned long ts;
     int rcode = con_->do_recv(buffer_, 2048, &ts);
-    if (rcode < 0)
+    if (rcode < 0) {
+        std::cout << "do_recv() failed, code=" << rcode << ", buffer_=" << buffer_ << std::endl;
         return false;
+    }
 
     return parse_incoming_data((struct rtde_data_package *)buffer_, ts);
 }
