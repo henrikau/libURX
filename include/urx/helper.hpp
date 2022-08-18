@@ -77,6 +77,10 @@ double deg_to_rad(const double deg)
     return deg * PI / 180.0;
 }
 
+double rad_to_deg(const double rad)
+{
+    return rad * 180 / PI;
+}
 }
 
 static inline double absf(const double val)
