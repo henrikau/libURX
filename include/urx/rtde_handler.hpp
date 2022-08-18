@@ -176,7 +176,6 @@ private:
     void rtde_worker();
 
     std::mutex bottleneck;
-    std::thread rtde_proxy;
 
     bool proxy_running;
 };
