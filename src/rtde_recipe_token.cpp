@@ -22,17 +22,17 @@ urx::RTDE_Recipe_Token_In::RTDE_Recipe_Token_In(std::string n, int idx, void *t)
     case BOOL:
         // Fallthrough (same as for UINT8)
     case UINT8:
-        tokenStore = [=](unsigned char *buf) { *(uint8_t *)(buf + offset) = *(uint8_t*)t; };
+        tokenStore = [this, t](unsigned char *buf) { *(uint8_t *)(buf + offset) = *(uint8_t*)t; };
         break;
     case UINT32:
-        tokenStore = [=](unsigned char *buf) { *(uint32_t *)(buf + offset) = htobe32(*(uint32_t *)t); };
+        tokenStore = [this, t](unsigned char *buf) { *(uint32_t *)(buf + offset) = htobe32(*(uint32_t *)t); };
         break;
         // no input case for UINT64
     case INT32:
-        tokenStore = [=](unsigned char *buf) { *(int32_t *)(buf + offset) = htobe32(*(int32_t *)t); };
+        tokenStore = [this, t](unsigned char *buf) { *(int32_t *)(buf + offset) = htobe32(*(int32_t *)t); };
         break;
     case DOUBLE:
-        tokenStore = [=](unsigned char *buf) { *(double *)(buf + offset) = double_h(*(double *)t); };
+        tokenStore = [this, t](unsigned char *buf) { *(double *)(buf + offset) = double_h(*(double *)t); };
         break;
         // no input case for VECTOR3D
         // no input case for VECTOR6D
@@ -65,39 +65,39 @@ urx::RTDE_Recipe_Token_Out::RTDE_Recipe_Token_Out(std::string n, int idx, void *
     // (probably BE, so must be changed...
     switch (type) {
     case BOOL:
-        tokenParser = [=](unsigned char *buf) { *(bool *)t = (*(buf+offset) & 0xff) != 0x00; };
+        tokenParser = [this, t](unsigned char *buf) { *(bool *)t = (*(buf+offset) & 0xff) != 0x00; };
         break;
     case UINT8:
-        tokenParser = [=](unsigned char *buf) { *(uint8_t *)t = *(uint8_t *)(buf+ offset); };
+        tokenParser = [this, t](unsigned char *buf) { *(uint8_t *)t = *(uint8_t *)(buf+ offset); };
         break;
     case UINT32:
-        tokenParser = [=](unsigned char *buf) { *(uint32_t *)t = be32toh(*(uint32_t *)(buf+offset)); };
+        tokenParser = [this, t](unsigned char *buf) { *(uint32_t *)t = be32toh(*(uint32_t *)(buf+offset)); };
         break;
     case UINT64:
-        tokenParser = [=](unsigned char *buf) { *(uint64_t *)t = be64toh(*(uint64_t *)(buf+ offset)); };
+        tokenParser = [this, t](unsigned char *buf) { *(uint64_t *)t = be64toh(*(uint64_t *)(buf+ offset)); };
         break;
     case INT32:
-        tokenParser = [=](unsigned char *buf) { *(int32_t *)t = (int32_t)be32toh(*(uint32_t *)(buf+offset)); };
+        tokenParser = [this, t](unsigned char *buf) { *(int32_t *)t = (int32_t)be32toh(*(uint32_t *)(buf+offset)); };
         break;
     case DOUBLE:
-        tokenParser = [=](unsigned char *buf) {
+        tokenParser = [this, t](unsigned char *buf) {
             *(double *)t = double_be(*(double *)(buf + offset));
         };
         break;
     case VECTOR3D:
-        tokenParser = [=](unsigned char *buf) {
+        tokenParser = [this, t](unsigned char *buf) {
             for (int c = 0; c < 3; ++c)
                 ((double *)t)[c] = double_be(((double *)(buf + offset))[c]);
         };
         break;
     case VECTOR6D:
-        tokenParser = [=](unsigned char *buf) {
+        tokenParser = [this, t](unsigned char *buf) {
             for (int c = 0; c < 6; ++c)
                 ((double *)t)[c] = double_be(((double *)(buf + offset))[c]);
         };
         break;
     case VECTOR6INT32:
-        tokenParser = [=](unsigned char *buf) {
+        tokenParser = [this, t](unsigned char *buf) {
             for (int c = 0; c < 6; ++c)
                 ((int32_t *)t)[c] = (int32_t)be32toh(((uint32_t *)(buf+offset))[c]);
         };
@@ -106,14 +106,14 @@ urx::RTDE_Recipe_Token_Out::RTDE_Recipe_Token_Out(std::string n, int idx, void *
         //                 !! NOTE !!
         // No listed value from URControl actually uses this datatype
         // add for 6 array, not for first only
-        tokenParser = [=](unsigned char *buf) {
+        tokenParser = [this, t](unsigned char *buf) {
             for (int c = 0; c < 6; ++c)
                 ((uint32_t *)t)[c] = be32toh(((uint32_t *)(buf+offset))[c]);
         };
         break;
     case STRING:
         // FIXME: add for 3 array, not for first only
-        tokenParser = [=](unsigned char *buf) { strncpy((char *)buf, (char *)t, 32); };
+        tokenParser = [this, t](unsigned char *buf) { strncpy((char *)buf, (char *)t, 32); };
         break;
     case NOT_FOUND:
     default:
