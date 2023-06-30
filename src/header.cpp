@@ -104,7 +104,7 @@ bool rtde_mkreq_msg_out(struct rtde_msg *rtde,
 	rtde->hdr.size = htons(size);
 	rtde->mlength = msgsz;
 
-	char * dst = (char *)&rtde->msg;
+	unsigned char * dst = rtde_msg_get_payload(rtde);
 	for (size_t c = 0; c < msgsz; ++c)
 		dst[c] = msg[c];
 
@@ -126,7 +126,7 @@ struct rtde_control_package_out * rtde_control_msg_get(double freq)
 	if (!cp)
 		return NULL;
 
-	cp->hdr.size = htons(sizeof(struct rtde_control_package_out) - sizeof(unsigned char));
+	cp->hdr.size = htons(sizeof(struct rtde_control_package_out));
 	cp->update_freq = freq;
 	return cp;
 }
@@ -138,7 +138,7 @@ struct rtde_control_package_in * rtde_control_get_in(void)
             return NULL;
         }
 
-	in->hdr.size = htons(sizeof(*in) - sizeof(unsigned char));
+	in->hdr.size = htons(sizeof(*in));
 	return in;
 }
 
@@ -147,68 +147,70 @@ void rtde_control_msg_clear(struct rtde_header *hdr, bool dir_out)
 	if (dir_out) {
 		struct rtde_control_package_out *cp = (struct rtde_control_package_out *)hdr;
 		hdr->type = RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS;
-		hdr->size = htons(sizeof(*cp) - sizeof(unsigned char));
+		hdr->size = htons(sizeof(*cp));
 		cp->update_freq = 0.0;
-		cp->variables = 0;
+		*(rtde_control_package_out_get_payload(cp)) = 0;
 	} else {
 		struct rtde_control_package_in *cp = (struct rtde_control_package_in *)hdr;
-		hdr->size = htons(sizeof(*cp) - sizeof(unsigned char));
+		hdr->size = htons(sizeof(*cp));
 		hdr->type = RTDE_CONTROL_PACKAGE_SETUP_INPUTS;
-		cp->variables = 0;
+		*(rtde_control_package_in_get_payload(cp)) = 0;
 	}
 }
-bool rtde_control_msg_in(struct rtde_control_package_in *in, const char *payload)
+bool rtde_control_msg_in(struct rtde_control_package_in *cpi, const char *payload)
 {
-	if (!in || !payload)
+	if (!cpi || !payload)
 		return false;
 
 	size_t len = strlen(payload);
-	if (len > (2048 - sizeof(*in)))
+	if (len > (2048 - sizeof(*cpi)))
 		return false;
 
-	rtde_control_msg_clear((struct rtde_header *)in, false);
+	rtde_control_msg_clear((struct rtde_header *)cpi, false);
+
+        unsigned char *variables = rtde_control_package_in_get_payload(cpi);
 	for (size_t i = 0; i < len; i++)
-		(&in->variables)[i] = payload[i];
-	(&in->variables)[len] = 0x00;
-	in->hdr.size = htons(ntohs(in->hdr.size) + len);
+		variables[i] = payload[i];
+	variables[len] = 0x00;
+	cpi->hdr.size = htons(ntohs(cpi->hdr.size) + len);
 	return true;
 }
 
-bool rtde_control_msg_out(struct rtde_control_package_out *cp, const char *payload)
+bool rtde_control_msg_out(struct rtde_control_package_out *cpo, const char *payload)
 {
-	if (!cp || !payload)
+	if (!cpo || !payload)
 		return false;
 
 	size_t len = strlen(payload);
-	if (len > (2048 - sizeof(*cp)))
+	if (len > (2048 - sizeof(*cpo)))
 		return false;
 
-	rtde_control_msg_clear((struct rtde_header *)cp, true);
+	rtde_control_msg_clear((struct rtde_header *)cpo, true);
+        unsigned char *variables = rtde_control_package_out_get_payload(cpo);
 	for (size_t i = 0; i < len; i++)
-		(&cp->variables)[i] = payload[i];
-	(&cp->variables)[len] = 0x00;
-	cp->hdr.size = htons(ntohs(cp->hdr.size) + len);
+		variables[i] = payload[i];
+	variables[len] = 0x00;
+	cpo->hdr.size = htons(ntohs(cpo->hdr.size) + len);
 	return true;
 }
 
-void rtde_control_msg_finalize(struct rtde_control_package_out *cp)
+void rtde_control_msg_finalize(struct rtde_control_package_out *cpo)
 {
-	int sz = ntohs(cp->hdr.size);
+	int sz = ntohs(cpo->hdr.size);
 	if (sz == sizeof(struct rtde_header))
 		return;
 
 	/* drop trailing , */
-	(&cp->variables)[sz - sizeof(struct rtde_control_package_out)] = 0;
-	cp->hdr.size = htons(sz - 1);
+        (rtde_control_package_out_get_payload(cpo))[sz - sizeof(struct rtde_control_package_out)] = 0;
+	cpo->hdr.size = htons(sz);
 }
 
 bool rtde_control_package_resp_validate(struct rtde_control_package_resp *resp)
 {
 	if (!basic_hdr_validate((struct rtde_header *)resp, RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS) &&
-            !basic_hdr_validate((struct rtde_header *)resp, RTDE_CONTROL_PACKAGE_SETUP_INPUTS)) {
-            printf("basic_hdr_validate() failed\n");
+            !basic_hdr_validate((struct rtde_header *)resp, RTDE_CONTROL_PACKAGE_SETUP_INPUTS))
 		return false;
-        }
+
 	/* supersimple token-parser, split on ',' and match on
          * "NOT_FOUND"
          *
@@ -245,9 +247,9 @@ bool rtde_control_package_resp_validate(struct rtde_control_package_resp *resp)
             break;
         }
 #endif
-	unsigned char *start = &resp->variables;
+	unsigned char *start = rtde_control_package_resp_get_payload(resp);
 	unsigned char *ptr = start;
-	unsigned char *end = &resp->variables + htons(resp->hdr.size) - sizeof(struct rtde_control_package_resp);
+	unsigned char *end = start + htons(resp->hdr.size) - sizeof(struct rtde_control_package_resp);
 	while (ptr < end) {
 		if (*ptr == ',' || *(ptr+1) == 0x00) {
 			enum RTDE_DATA_TYPE type = data_name_to_type((const char *)start, (size_t)(ptr-start));
@@ -266,7 +268,7 @@ void rtde_data_package_init(struct rtde_data_package *dp, int recipe_id, int byt
     if (!dp)
         return;
     dp->hdr.type = RTDE_DATA_PACKAGE;
-    dp->hdr.size = htons(sizeof(*dp) - sizeof(unsigned char) + bytes);
+    dp->hdr.size = htons(sizeof(*dp) + bytes);
     dp->recipe_id = recipe_id;
 }
 

@@ -22,7 +22,7 @@ static inline void _set_recipe_resp(struct rtde_control_package_resp *resp, std:
     resp->hdr.type = RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS;
     resp->hdr.size = htons(sizeof(struct rtde_control_package_resp) + variables.length());
     resp->recipe_id = recipe_id & 0xff;
-    char *dst = (char *)resp + sizeof(struct rtde_header) + sizeof(uint8_t);
+    char *dst = (char *)resp + sizeof(struct rtde_control_package_resp);
     strncpy(dst, variables.c_str(), variables.length()+1);
 }
 

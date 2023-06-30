@@ -45,15 +45,17 @@ struct rtde_ur_ver {
 } __attribute__((packed));
 
 struct rtde_msg {
-	struct rtde_header hdr;
-	uint8_t mlength;
-	/* this is an array, but placed directly at this address, this
-	 * conveniently counts for \0 when allocating */
+    struct rtde_header hdr;
+    uint8_t mlength;
 
-    // With latest version of gcc, this breaks, but clang is happy
-    unsigned char msg;
+    // The payload of the RTDE message follows this header directly, so
+    // to get the address of the payload, an offset must be made.
 } __attribute__((packed));
 
+static inline unsigned char * rtde_msg_get_payload(struct rtde_msg *msg)
+{
+    return (unsigned char *)msg + sizeof(*msg);
+}
 
 /*-------------------------------------------------------
  * RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS (.v2)
@@ -72,8 +74,12 @@ struct rtde_msg {
 struct rtde_control_package_out {
 	struct rtde_header hdr;
 	double update_freq;
-	unsigned char variables;
 } __attribute__((packed));
+
+static inline unsigned char * rtde_control_package_out_get_payload(struct rtde_control_package_out *cpo)
+{
+    return (unsigned char *)cpo + sizeof(*cpo);
+}
 
 /*-------------------------------------------------------
  * RTDE_CONTROL_PACKAGE_SETUP_INPUTS (.v1 && .v2)
@@ -86,8 +92,12 @@ struct rtde_control_package_out {
  */
 struct rtde_control_package_in {
 	struct rtde_header hdr;
-	unsigned char variables;
 } __attribute__((packed));
+
+static inline unsigned char * rtde_control_package_in_get_payload(struct rtde_control_package_in *cpi)
+{
+    return (unsigned char *)cpi + sizeof(*cpi);
+}
 
 /*
  * Summary: Returns the variable types in the same order as they were
@@ -105,15 +115,21 @@ struct rtde_control_package_in {
 struct rtde_control_package_resp {
 	struct rtde_header hdr;
 	uint8_t recipe_id;
-	unsigned char variables;
 } __attribute__((packed));
-
+static inline unsigned char * rtde_control_package_resp_get_payload(struct rtde_control_package_resp *cpr)
+{
+    return (unsigned char *)cpr + sizeof(*cpr);
+}
 
 struct rtde_data_package {
 	struct rtde_header hdr;
 	uint8_t recipe_id;
-	unsigned char data;
 } __attribute__((packed));
+
+static inline unsigned char * rtde_data_package_get_payload(struct rtde_data_package *dp)
+{
+    return (unsigned char *)dp + sizeof(*dp);
+}
 
 // control pacakge, start/pause response
 struct rtde_control_package_sp_resp {

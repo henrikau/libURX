@@ -61,7 +61,7 @@ struct F
         memset(buffer, 0, 2048);
         dp = (struct rtde_data_package *)buffer;
         rtde_data_package_init(dp, recipe_id, (4 + 8 + 6*8*4));
-        dbuf = &dp->data;
+        dbuf = rtde_data_package_get_payload(dp);
         seqnr = (int32_t *)&dbuf[0];
         ts  = (double *)&dbuf[4];
         target_q = (double *)&dbuf[4+8];
@@ -321,13 +321,14 @@ BOOST_AUTO_TEST_CASE(test_robot_init_vals)
     // // verify sent data via robot->rtde_handler->con
     struct rtde_data_package *data = (struct rtde_data_package *)send_buffer;
     BOOST_CHECK(data->hdr.type == RTDE_DATA_PACKAGE);
-    int32_t *seqnr = (int32_t *)&data->data;
+    unsigned char *arr = rtde_data_package_get_payload(data);
+    int32_t *seqnr = (int32_t *)(arr);
     BOOST_CHECK(ntohl(*seqnr) == 1);
-    int32_t *cmd =  (int32_t *)&((&data->data)[4]);
+    int32_t *cmd =  (int32_t *)(arr + sizeof(int32_t));
     BOOST_CHECK(ntohl(*cmd) == 2);
     double *w_in;
     for (std::size_t i = 0; i < urx::DOF; ++i) {
-        w_in =  (double *)&((&data->data)[8 + i*8]);
+        w_in = (double *)(arr + 2 * sizeof(int32_t) + i*sizeof(double));
         BOOST_CHECK_CLOSE(urx::double_h(*w_in), 0, 1e-9);
     }
 
@@ -337,7 +338,7 @@ BOOST_AUTO_TEST_CASE(test_robot_init_vals)
     memset(send_buffer, 0, send_sz);
     BOOST_CHECK(robot->update_w(w));
     for (std::size_t i = 0; i < urx::DOF; ++i) {
-        w_in =  (double *)&((&data->data)[8 + i*8]);
+        w_in = (double *)(arr + 2 * sizeof(int32_t) + i*sizeof(double));
         BOOST_CHECK_CLOSE(urx::double_h(*w_in), 1.0*i, 1e-9);
     }
 
@@ -345,7 +346,7 @@ BOOST_AUTO_TEST_CASE(test_robot_init_vals)
     memset(send_buffer, 0, send_sz);
     BOOST_CHECK(robot->update_w(w));
     for (std::size_t i = 0; i < urx::DOF; ++i) {
-        w_in =  (double *)&((&data->data)[8 + i*8]);
+        w_in = (double *)(arr + 2 * sizeof(int32_t) + i*sizeof(double));
         if (i != 3)
             BOOST_CHECK_CLOSE(urx::double_h(*w_in), 1.0*i, 1e-9);
         else

@@ -94,7 +94,8 @@ BOOST_AUTO_TEST_CASE(test_recipe_response_etx)
     BOOST_CHECK(r.add_field("timestamp", &ts));
     struct rtde_control_package_resp *resp = create_cp_resp();
     _set_recipe_resp(resp, "DOUBLEE", 42);
-    (&resp->variables)[6] = 0x03; // End-of-Text
+    unsigned char *payload = rtde_control_package_resp_get_payload(resp);
+    payload[6] = 0x03; // End-of-Text
     BOOST_CHECK(r.register_response(resp));
 
 }
@@ -217,7 +218,7 @@ BOOST_AUTO_TEST_CASE(test_recipe_in)
     unsigned char buf[32] = {0};
     struct rtde_data_package * dp = (struct rtde_data_package *)buf;
     rtde_data_package_init(dp, 1, r.expected_bytes());
-    unsigned char *buffer = &dp->data;
+    unsigned char *buffer = rtde_data_package_get_payload(dp);
 
     BOOST_CHECK(!r.store(NULL));
     BOOST_CHECK(r.store(dp));

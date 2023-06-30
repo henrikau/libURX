@@ -247,13 +247,15 @@ BOOST_AUTO_TEST_CASE(test_handler_full_large_data)
     dp->hdr.type = RTDE_DATA_PACKAGE;
     dp->recipe_id = 1;
 
-    double *ts_ptr = (double *)&dp->data;
+    unsigned char *arr = rtde_data_package_get_payload(dp);
+    double *ts_ptr = (double *)arr;
     int32_t jm_val[6];
-    int32_t *jm_ptr = (int32_t *)&(&dp->data)[8];
-    int32_t *rm_ptr = (int32_t *)&(&dp->data)[8 + 6*4];
-    double *jt_ptr = (double *)&(&dp->data)[8 + 6*4 + 4];
+    int32_t *jm_ptr = (int32_t *)(arr + sizeof(double));
+    int32_t *rm_ptr = (int32_t *)(arr + sizeof(double)+ 6*sizeof(int32_t));
+    double *jt_ptr = (double *)(arr + sizeof(double) + 6*sizeof(int32_t) + sizeof(int32_t));
     double jt_val[6];
     double ts_val = 42.1337;
+
     *ts_ptr = urx::double_h(ts_val);
     for (int c = 0; c < 6; ++c) {
         jm_val[c] = c+2;
@@ -279,7 +281,7 @@ BOOST_AUTO_TEST_CASE(test_handler_full_large_data)
     r->add_field("robot_mode", &rm);
     double jt[6];
     r->add_field("joint_temperatures", jt);
-    dp->hdr.size = htons(sizeof(struct rtde_data_package) - 1 + r->expected_bytes());
+    dp->hdr.size = htons(sizeof(struct rtde_data_package) + r->expected_bytes());
 
     struct rtde_control_package_resp *resp = create_cp_resp();
     _set_recipe_resp(resp, "DOUBLE,VECTOR6INT32,INT32,VECTOR6D", 1);
@@ -368,12 +370,12 @@ BOOST_AUTO_TEST_CASE(test_update_recv_timestamp)
 
     // Assemble data package
     struct rtde_data_package *dp = (struct rtde_data_package *)buf_;
-    double *ts_ptr = (double *)&dp->data;
+    double *ts_ptr = (double *)rtde_data_package_get_payload(dp);
     *ts_ptr = urx::double_h(42.1337);
 
     dp->hdr.type = RTDE_DATA_PACKAGE;
     dp->recipe_id = 7;
-    dp->hdr.size = htons(sizeof(struct rtde_data_package) - 1 + r->expected_bytes());
+    dp->hdr.size = htons(sizeof(struct rtde_data_package) + r->expected_bytes());
 
     mock->set_recvBuf(buf_, ntohs(dp->hdr.size));
     mock->set_sendCode(42);
@@ -437,7 +439,8 @@ BOOST_AUTO_TEST_CASE(test_handler_input_full)
     BOOST_CHECK(data->hdr.type == RTDE_DATA_PACKAGE);
     printf("size: %d\n", ntohs(data->hdr.size));
 
-    unsigned char *buf = &data->data;
+    unsigned char *buf = rtde_data_package_get_payload(data);
+
     BOOST_CHECK(ntohs(data->hdr.size) == (sizeof(*data) - sizeof(unsigned char) + 12));
     BOOST_CHECK(be32toh(*(uint32_t *)buf) == 0xdeadbeef);
     BOOST_CHECK_CLOSE(urx::double_be(*(double *)(buf+4)), 0.5, 0.00001);

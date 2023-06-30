@@ -23,12 +23,32 @@ BOOST_AUTO_TEST_CASE(test_header_verify_struct_sizes)
     BOOST_CHECK(sizeof(struct rtde_prot) == 5);
     BOOST_CHECK(sizeof(struct rtde_ur_ver_payload) == 16);
     BOOST_CHECK(sizeof(struct rtde_ur_ver) == 19);
-    BOOST_CHECK(sizeof(struct rtde_msg) == 5);
-    BOOST_CHECK(sizeof(struct rtde_control_package_out) == 12);
-    BOOST_CHECK(sizeof(struct rtde_control_package_in) == 4);
-    BOOST_CHECK(sizeof(struct rtde_control_package_resp) == 5);
-    BOOST_CHECK(sizeof(struct rtde_data_package) == 5);
+    BOOST_CHECK(sizeof(struct rtde_msg) == 4);
+    BOOST_CHECK(sizeof(struct rtde_control_package_out) == (sizeof(struct rtde_header) + sizeof(double)));
+    BOOST_CHECK(sizeof(struct rtde_control_package_in) == sizeof(struct rtde_header));
+    BOOST_CHECK(sizeof(struct rtde_control_package_resp) == 4);
+    BOOST_CHECK(sizeof(struct rtde_data_package) == 4);
     BOOST_CHECK(sizeof(struct rtde_control_package_sp_resp) == 4);
+}
+
+BOOST_AUTO_TEST_CASE(test_header_get_payload)
+{
+    char buffer[128] = {0};
+    struct rtde_msg *msg = (struct rtde_msg *)buffer;
+    buffer[3] = 'a';
+    BOOST_CHECK(msg->mlength == 97);
+
+    // Verify that get_payload addresses correctly
+    unsigned char *payload = rtde_msg_get_payload(msg);
+    BOOST_CHECK((char *)payload == (char *)&buffer[4]);
+    strcpy((char *)payload, "Hello, bold world\n");
+    for (int i = 0; i < 17; i++)
+        BOOST_CHECK(buffer[4+i] == payload[i]);
+
+    struct rtde_data_package *dp = (struct rtde_data_package *)buffer;
+    payload = rtde_data_package_get_payload(dp);
+    BOOST_CHECK(payload != NULL);
+    BOOST_CHECK((char *)payload == &buffer[4]);
 }
 
 BOOST_AUTO_TEST_CASE(test_header_setup)
@@ -98,7 +118,6 @@ BOOST_AUTO_TEST_CASE(test_header_get_ur_ver)
 
 void _valid_ur_hdr(struct rtde_ur_ver *header)
 {
-  printf("headersize: %zu\n", sizeof(*header));
   memset(header, 0, sizeof(*header));
   header->hdr.size = htons(sizeof(*header));
   header->hdr.type = RTDE_GET_URCONTROL_VERSION;
@@ -164,9 +183,10 @@ BOOST_AUTO_TEST_CASE(test_header_msg)
     BOOST_CHECK(rtde->mlength == (strlen(msg)+1));
 
     // msg copied properly?
-    BOOST_CHECK(strncmp((const char *)&rtde->msg, msg, strlen(msg)) == 0);
+    BOOST_CHECK(strncmp((const char *)rtde_msg_get_payload(rtde), msg, strlen(msg)) == 0);
     rtde_msg_put(rtde);
 }
+
 BOOST_AUTO_TEST_CASE(test_header_types)
 {
     BOOST_CHECK(type_to_size(BOOL) == 1);
@@ -208,16 +228,19 @@ BOOST_AUTO_TEST_CASE(test_data_package_fast)
 {
     BOOST_CHECK(!rtde_control_msg_out(NULL, "DOUBLE"));
 
-    struct rtde_control_package_out *cp = rtde_control_msg_get(125);
-    BOOST_CHECK(cp != NULL);
-    BOOST_CHECK(rtde_control_msg_out(cp, "DOUBLE"));
+    struct rtde_control_package_out *cpo = rtde_control_msg_get(125);
+    BOOST_CHECK(cpo != NULL);
+    BOOST_CHECK(rtde_control_msg_out(cpo, "DOUBLE"));
+    BOOST_CHECK(ntohs(cpo->hdr.size) ==  (sizeof(struct rtde_control_package_out) + strlen("DOUBLE")));
 
     std::string msg = "DOUBLE,INT32,VECTOR6D,VECTOR6UINT32,VECTOR6UINT32";
-    BOOST_CHECK(rtde_control_msg_out(cp, msg.c_str()));
-    BOOST_CHECK(ntohs(cp->hdr.size) ==  (sizeof(struct rtde_control_package_out) + msg.length() - 1));
-    BOOST_CHECK(!(strcmp((char *)&cp->variables, "error") == 0));
-    BOOST_CHECK(strcmp((char *)&cp->variables, msg.c_str()) == 0);
-    free(cp);
+    BOOST_CHECK(rtde_control_msg_out(cpo, msg.c_str()));
+
+    BOOST_CHECK(ntohs(cpo->hdr.size) ==  (sizeof(struct rtde_control_package_out) + msg.length()));
+    unsigned char *variables = rtde_control_package_out_get_payload(cpo);
+    BOOST_CHECK(!(strcmp((char *)variables, "error") == 0));
+    BOOST_CHECK(strcmp((char *)variables, msg.c_str()) == 0);
+    free(cpo);
 }
 
 BOOST_AUTO_TEST_CASE(test_basic_data_package_resp)
@@ -247,13 +270,15 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
     resp->hdr.type = RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS;
 
     std::string pl = "NOT_FOUND";
-    resp->variables = 0;
+    unsigned char * payload = rtde_control_package_resp_get_payload(resp);
+    payload[0] = 0;
+
     strncat(dst, pl.c_str(), pl.length()+1);
     resp->hdr.size = htons(sizeof(*resp) + pl.length()-1);
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
 
     std::string pl2 = "DOUBLE,VECTOR6D,NOT_FOUND,INT32";
-    resp->variables = 0;
+    payload[0] = 0;
     strncat(dst, pl2.c_str(), pl2.length()+1);
     resp->hdr.size = htons(sizeof(*resp) + pl2.length()-1);
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
@@ -263,7 +288,7 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
     // is present)
     std::string pl3 = "DOUBLE,VECTOR6D,NOT_FOUND,INT32";
     dst = (char *)resp + sizeof(struct rtde_header) + sizeof(uint8_t);
-    resp->variables = 0;
+    payload[0] = 0;
     resp->recipe_id = 1;
     strncat(dst, pl3.c_str(), pl3.length() + 1);
     resp->hdr.size = htons(sizeof(*resp) + pl3.length());

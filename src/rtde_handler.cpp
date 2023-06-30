@@ -90,14 +90,14 @@ bool urx::RTDE_Handler::register_recipe(urx::RTDE_Recipe *r)
         return false;
 
     auto sendcode = con_->do_send_recv(hdr, ntohs(hdr->size), buffer_, 2048);
-    if (sendcode < 0) {
-        std::cout << "do_sending ControlPackage FAILED" << std::endl;
+    if (sendcode < 0)
         return false;
-    }
-    if (!r->register_response((struct rtde_control_package_resp *)buffer_)) {
-        std::cout << __func__ << "() FAILED registering Recipe" << std::endl;
+
+    // Make sure buffer is 0-terminated
+    buffer_[sendcode < 2048 ? sendcode: 2047] = 0x00;
+
+    if (!r->register_response((struct rtde_control_package_resp *)buffer_))
         return false;
-    }
 
     if (r->dir_out()) {
         if (out != nullptr)
@@ -124,14 +124,11 @@ urx::RTDE_Handler::start()
     struct rtde_control_package_sp_resp *resp = (struct rtde_control_package_sp_resp *)buffer_;
     int sendcode = con_->do_send_recv(&cp, ntohs(cp.size), (void *)resp, (int)sizeof(*resp));
 
-    if (sendcode < 0) {
-        std::cerr << __func__ << "() do_send() failed" << std::endl;
+    if (sendcode < 0)
         return false;
-    }
-    if (!rtde_control_package_sp_resp_validate(resp, true)) {
-        std::cerr << __func__ << "() invalid response received, won't start." << std::endl;
+
+    if (!rtde_control_package_sp_resp_validate(resp, true))
         return false;
-    }
 
     return resp->accepted;
 }
@@ -164,12 +161,12 @@ urx::RTDE_Handler::parse_incoming_data(struct rtde_data_package* data, unsigned 
         return false;
 
     // expected size of buffer?
-    int datasize = ntohs(data->hdr.size) - sizeof(struct rtde_data_package) + sizeof(unsigned char);
-    if (out->expected_bytes() != datasize) {
-        // std::cout << "mismatch between expected bytes " << out->expected_bytes()<< " and actual "<< datasize << std::endl;
+    int datasize = ntohs(data->hdr.size) - sizeof(struct rtde_data_package);
+
+    if (out->expected_bytes() != datasize)
         return false;
-    }
-    return out->parse(&data->data, rx_ts);
+
+    return out->parse(rtde_data_package_get_payload(data), rx_ts);
 }
 
 //              FIXME

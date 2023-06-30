@@ -90,14 +90,11 @@ struct rtde_header *urx::RTDE_Recipe::GetMsg()
 bool
 urx::RTDE_Recipe::register_response(struct rtde_control_package_resp* resp)
 {
-    if (!resp)
-        return false;
-
     if (!rtde_control_package_resp_validate(resp))
         return false;
 
     // unpack response and match to each Recipe_Token
-    std::string variables = std::string(reinterpret_cast<const char*>(&resp->variables));
+    std::string variables = std::string(reinterpret_cast<const char*>(rtde_control_package_resp_get_payload(resp)));
     std::stringstream ss(variables);
     std::string item;
     std::vector<std::string> varlist;
@@ -145,7 +142,7 @@ urx::RTDE_Recipe::store(struct rtde_data_package *dp)
         return false;
 
     rtde_data_package_init(dp, recipe_id_, expected_bytes());
-    unsigned char *data = &dp->data;
+    unsigned char *data = rtde_data_package_get_payload(dp);
 
     for (auto &t : fields)
         if (!t->store(data))
