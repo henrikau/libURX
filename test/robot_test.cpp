@@ -221,12 +221,13 @@ BOOST_AUTO_TEST_CASE(test_read_output_rtde)
 {
     setup_robot_output_defaults();
 
-    // receive data
+    // receive data, only call recv() if robot is not running
+    BOOST_ASSERT(!robot->running());
     BOOST_CHECK(robot->recv());
 
     urx::Robot_State state = robot->state(false);
     BOOST_CHECK(state.dof == urx::DOF);
-    BOOST_CHECK(state.seqnr == 1337);
+    BOOST_CHECK_MESSAGE(state.seqnr == 1337, "Seqnr not as expected");
     BOOST_CHECK_CLOSE(state.ur_ts, 42.0, 1e-9);
     for (int i = 0; i < 6; i++) {
         BOOST_CHECK_CLOSE(state.jq[i],   1.0*i, 1e-9);
@@ -260,7 +261,7 @@ BOOST_AUTO_TEST_CASE(test_robot_start)
 
     // cannot stop a stopped thread
     BOOST_CHECK(!robot->stop());
-    BOOST_CHECK(robot->start());
+    BOOST_ASSERT(robot->start());
 
     // make sure we actually get a start-message:
     struct rtde_header *start = (struct rtde_header *)send_buffer;
@@ -268,10 +269,10 @@ BOOST_AUTO_TEST_CASE(test_robot_start)
 
     std::cout << "Thread spawned, waiting before killing it" << std::endl;
     usleep(1000);
-    BOOST_CHECK(robot->running());
-
+    BOOST_ASSERT(robot->running());
 
     ready_data_buffer(1337);
+
     urx::Robot_State s1 = robot->state(false);
     std::cout << "state: " << s1.seqnr << std::endl;
     BOOST_CHECK(s1.seqnr == 1337);
@@ -318,18 +319,19 @@ BOOST_AUTO_TEST_CASE(test_robot_init_vals)
 
     BOOST_CHECK(robot->update_w(w));
 
-    // // verify sent data via robot->rtde_handler->con
+    // Verify sent data via robot->rtde_handler->con
     struct rtde_data_package *data = (struct rtde_data_package *)send_buffer;
     BOOST_CHECK(data->hdr.type == RTDE_DATA_PACKAGE);
+
     unsigned char *arr = rtde_data_package_get_payload(data);
     int32_t *seqnr = (int32_t *)(arr);
+    int32_t *cmd   = (int32_t *)(arr + sizeof(int32_t));
+    double  *w_in  = ( double *)(arr + 2 * sizeof(int32_t));
+
     BOOST_CHECK(ntohl(*seqnr) == 1);
-    int32_t *cmd =  (int32_t *)(arr + sizeof(int32_t));
     BOOST_CHECK(ntohl(*cmd) == 2);
-    double *w_in;
     for (std::size_t i = 0; i < urx::DOF; ++i) {
-        w_in = (double *)(arr + 2 * sizeof(int32_t) + i*sizeof(double));
-        BOOST_CHECK_CLOSE(urx::double_h(*w_in), 0, 1e-9);
+        BOOST_CHECK_CLOSE(urx::double_h(w_in[i]), 0, 1e-9);
     }
 
     w.clear();
@@ -361,7 +363,6 @@ BOOST_AUTO_TEST_CASE(test_robot_script_upload)
     BOOST_CHECK(strncmp((const char *)urx_send_buffer, "def rtde_prog()", strlen("def rtde_prog()")) == 0);
 }
 
-#if 0
 BOOST_AUTO_TEST_CASE(test_robot_sync_state)
 {
     setup_robot_output_defaults();
@@ -393,6 +394,7 @@ BOOST_AUTO_TEST_CASE(test_robot_sync_state)
             robot->stop();
             std::cout << "robot stopped" << std::endl;
         });
+#if 0
 
 
     // start polling data, call state() synchronous, so we should block
@@ -410,8 +412,9 @@ BOOST_AUTO_TEST_CASE(test_robot_sync_state)
         std::cout << "s.jq[urx::ELBOW]=" << s.jq[urx::ELBOW] << std::endl;
         BOOST_CHECK_CLOSE(s.jq[urx::ELBOW], 1.0*i, 1e-9);
     }
+#endif
 
     t.join();
+
 }
-#endif
 BOOST_AUTO_TEST_SUITE_END()
