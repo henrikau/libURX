@@ -17,7 +17,7 @@ if [[ -z ${dirs} ]]; then
 fi
 
 while inotifywait -e modify -e create --exclude "\#" ${dirs} ; do
-    ./scripts/build.sh -f -t
+    ./scripts/build.sh -f -t -p
     # do a refresh-scan of tracked files
     dirs=$(for f in $(find . -name "*.[c|h][pp]?" -o -name "CMakeLists.txt"); do dirname ${f}; done|grep -v build|sort|uniq|tr '\n' ' ')
     if [[ -z ${dirs} ]]; then

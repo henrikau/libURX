@@ -13,6 +13,7 @@ cat <<EOF
     -f (fast-)compile
     -t run tests
     -I run INSTALL target
+    -p Run pmccabe (cyclomatic qualtiy metric)
 EOF
 }
 export CTEST_OUTPUT_ON_FAILURE=1
@@ -25,7 +26,7 @@ INSTALLPATH=${BUILDPATH}/tmp
 test -d ${BUILDPATH} || mkdir ${BUILDPATH}
 pushd "${BUILDPATH}"
 
-while getopts "acCftI" o; do
+while getopts "acCftIp" o; do
     case "${o}" in
 	'a')
 	    DO_CMAKE=1
@@ -51,6 +52,9 @@ while getopts "acCftI" o; do
 	't')
 	    DO_TEST=1
 	    ;;
+	'p')
+	    DO_PMCCABE=1
+	    ;;
 	*)
 	  usage
 	  exit 1
@@ -75,10 +79,27 @@ do_cmake ()
     popd > /dev/null
 }
 
+do_pmccabe ()
+{
+    if [[ -z $(which pmccabe) ]]; then
+	echo "Cannot find cyclomatic complexity, missing pmccabe. Please install."
+	exit 1;
+    fi
+
+    pushd ${ROOT}/src > /dev/null
+    pmccabe -v /dev/null | head -n6;
+    pmccabe *.c* | sort -nk 2 | tail -n20
+
+    echo "Files: ";
+    pmccabe -F *.c* |sort -nk 2
+    popd > /dev/null
+}
+
 test -z ${DO_CMAKE} || do_cmake
 test -z ${DO_CLEAN} || make clean
 test -z ${DO_MAKE} || time make -j$(nproc)
 test -z ${DO_TEST} || make test
+test -z ${DO_PMCCABE} || do_pmccabe
 test -z ${DO_INSTALL} || make install
 
 
