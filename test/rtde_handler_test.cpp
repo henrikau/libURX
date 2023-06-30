@@ -175,32 +175,33 @@ BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
     BOOST_CHECK(h->register_recipe(r));
 
     // Parse incoming data with the active input Recipes
-    struct rtde_data_package dp;
-    memset(&dp, 0, sizeof(struct rtde_data_package));
+    unsigned char buffer[1024] = {0};
+    struct rtde_data_package *dp = (struct rtde_data_package *)&buffer[0];
 
     // unknown recpie_id should fail
     BOOST_CHECK(!h->parse_incoming_data(NULL));
-    BOOST_CHECK(!h->parse_incoming_data(&dp));
+    BOOST_CHECK(!h->parse_incoming_data(dp));
 
-    dp.recipe_id= 42;
+    dp->recipe_id= 42;
 
     // Wrong datatype should fails
-    BOOST_CHECK(!h->parse_incoming_data(&dp));
+    BOOST_CHECK(!h->parse_incoming_data(dp));
 
-    dp.hdr.type = RTDE_DATA_PACKAGE;
+    dp->hdr.type = RTDE_DATA_PACKAGE;
 
     // 0 size  should fail
-    BOOST_CHECK(!h->parse_incoming_data(&dp));
+    BOOST_CHECK(!h->parse_incoming_data(dp));
 
     // invalid size should fail (missing 7 bytes of storage for the double
-    dp.hdr.size = htons(sizeof(struct rtde_data_package));
-    BOOST_CHECK(!h->parse_incoming_data(&dp));
+    dp->hdr.size = htons(sizeof(struct rtde_data_package));
+    BOOST_CHECK(!h->parse_incoming_data(dp));
 
-    dp.hdr.size = htons(sizeof(struct rtde_data_package) - sizeof(unsigned char) + sizeof(double));
-    *(double *)&dp.data = urx::double_h(42.1337);
+    dp->hdr.size = htons(sizeof(struct rtde_data_package) + sizeof(double));
+    double *data = (double *)rtde_data_package_get_payload(dp);
+    *data = urx::double_h(42.1337);
 
     // ok, valid package, should be ok
-    BOOST_CHECK(h->parse_incoming_data(&dp));
+    BOOST_CHECK(h->parse_incoming_data(dp));
 
     // Finally, retrieve the expected value:
 
@@ -355,8 +356,8 @@ BOOST_AUTO_TEST_CASE(test_update_recv_timestamp)
     urx::RTDE_Recipe *r = new urx::RTDE_Recipe();
     double ur_ts = 0.0;
     unsigned long ts = 42;
-    r->add_field("timestamp", &ur_ts);
-    r->track_ts_ns(&ts);
+    BOOST_CHECK(r->add_field("timestamp", &ur_ts));
+    BOOST_CHECK(r->track_ts_ns(&ts));
     BOOST_ASSERT(h->register_recipe(r));
 
     // Notify UR that we are ready
@@ -432,16 +433,14 @@ BOOST_AUTO_TEST_CASE(test_handler_input_full)
     // should place a correct control_packge_in in the send-buffer
     unsigned char sbuf[256] = {0};
     mock->set_sendBuffer(sbuf, 256);
-
     BOOST_CHECK(h->send(42));
+
     struct rtde_data_package *data = (struct rtde_data_package *)sbuf;
     BOOST_CHECK(data != NULL);
     BOOST_CHECK(data->hdr.type == RTDE_DATA_PACKAGE);
-    printf("size: %d\n", ntohs(data->hdr.size));
+    BOOST_CHECK(ntohs(data->hdr.size) == (sizeof(*data) + sizeof(slm) + sizeof(slf)));
 
     unsigned char *buf = rtde_data_package_get_payload(data);
-
-    BOOST_CHECK(ntohs(data->hdr.size) == (sizeof(*data) - sizeof(unsigned char) + 12));
     BOOST_CHECK(be32toh(*(uint32_t *)buf) == 0xdeadbeef);
     BOOST_CHECK_CLOSE(urx::double_be(*(double *)(buf+4)), 0.5, 0.00001);
     free(resp);

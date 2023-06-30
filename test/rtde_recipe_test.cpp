@@ -60,9 +60,9 @@ BOOST_AUTO_TEST_CASE(test_recipe_construct_msg)
     double ts;
     BOOST_CHECK(r.add_field("timestamp", &ts));
     BOOST_CHECK(r.num_fields() == 1);
-    struct rtde_control_package_out *cp = (struct rtde_control_package_out *)r.GetMsg();
-    BOOST_CHECK(cp!= NULL);
-    BOOST_CHECK(strcmp((char *)&cp->variables, "timestamp") == 0);
+    struct rtde_control_package_out *cpo = (struct rtde_control_package_out *)r.GetMsg();
+    BOOST_CHECK(cpo!= NULL);
+    BOOST_CHECK(strcmp((const char *)rtde_control_package_out_get_payload(cpo), "timestamp") == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_recipe_response)
@@ -192,9 +192,9 @@ BOOST_AUTO_TEST_CASE(test_recipe_in_construct_msg)
     BOOST_CHECK(r.add_field("speed_slider_mask", &slm));
     BOOST_CHECK(strcmp(r.get_fields().c_str(), "speed_slider_fraction,speed_slider_mask") == 0);
 
-    struct rtde_control_package_in *cp = (struct rtde_control_package_in *)r.GetMsg();
-    BOOST_CHECK(cp != NULL);
-    BOOST_CHECK(strcmp((char *)&cp->variables, "speed_slider_fraction,speed_slider_mask") == 0);
+    struct rtde_control_package_in *cpi = (struct rtde_control_package_in *)r.GetMsg();
+    BOOST_CHECK(cpi != NULL);
+    BOOST_CHECK(strcmp((char *)rtde_control_package_in_get_payload(cpi), "speed_slider_fraction,speed_slider_mask") == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_recipe_in)
