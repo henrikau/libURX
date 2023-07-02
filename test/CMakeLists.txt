@@ -19,6 +19,7 @@ set(TESTS
   urx_script_test
   urx_handler_test
   robot_test
+  robot_state_test
   )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../scripts/ur_script_movej.script

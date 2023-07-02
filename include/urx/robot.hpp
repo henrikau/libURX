@@ -42,6 +42,8 @@ namespace urx {
         {
         };
 
+        // Copy constructor
+        // this <-- a
         Robot_State(const Robot_State& a) :
             dof(DOF),
             ur_ts(a.ur_ts),
@@ -56,6 +58,8 @@ namespace urx {
             tcp_pose = a.tcp_pose;
         };
 
+        // Copy constructor
+        // this <-- a
         Robot_State& operator=(const Robot_State& a)
         {
             local_ts_us = a.local_ts_us;
@@ -71,6 +75,24 @@ namespace urx {
                 tcp_pose[i] = a.tcp_pose[i];
             }
             return *this;
+        }
+
+        // Fast copy of a's state into this state
+        // this <-- a
+        void copy_from(Robot_State& a)
+        {
+            local_ts_us = a.local_ts_us;
+            ur_ts = a.ur_ts;
+            seqnr = a.seqnr;
+            for (std::size_t i = 0; i < DOF; i++) {
+                jq_ref[i] = a.jq_ref[i];
+                jq[i]     = a.jq[i];
+                jqd[i]    = a.jqd[i];
+                jqdd[i]   = a.jqdd[i];
+                jt[i]     = a.jt[i];
+
+                tcp_pose[i] = a.tcp_pose[i];
+            }
         }
 
         // Degrees of freedom for this arm
