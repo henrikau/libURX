@@ -62,10 +62,10 @@ while getopts "acCftIp" o; do
 	esac
 done
 
-export CC=/usr/bin/clang
-export CXX=/usr/bin/clang++
-#export CC=/usr/bin/gcc
-#export CXX=/usr/bin/g++
+#export CC=/usr/bin/clang
+#export CXX=/usr/bin/clang++
+export CC=/usr/bin/gcc
+export CXX=/usr/bin/g++
 do_cmake ()
 {
     pushd "${BUILDPATH}" > /dev/null
