@@ -198,7 +198,13 @@ BOOST_AUTO_TEST_CASE(test_handler_full_data_path)
 
     dp->hdr.size = htons(sizeof(struct rtde_data_package) + sizeof(double));
     double *data = (double *)rtde_data_package_get_payload(dp);
+
+    // GCC is not really happy with writing into random offsets. We know
+    // this is safe, so disable this warning.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
     *data = urx::double_h(42.1337);
+#pragma GCC diagnostic pop
 
     // ok, valid package, should be ok
     BOOST_CHECK(h->parse_incoming_data(dp));

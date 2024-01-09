@@ -104,16 +104,22 @@ bool rtde_mkreq_msg_out(struct rtde_msg *rtde,
 	rtde->hdr.size = htons(size);
 	rtde->mlength = msgsz;
 
+        // rtde->msg is of 0 size, but we know that rtde_msg is mapped
+        // to a 2048 byte block, so it is safe to write to these offsets.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow="
 	unsigned char * dst = rtde_msg_get_payload(rtde);
-	for (size_t c = 0; c < msgsz; ++c)
-		dst[c] = msg[c];
-
+	for (size_t c = 0; c < msgsz; ++c) {
+            dst[c] = msg[c];
+        }
 	dst[msgsz] = srcsz;
 
 	for (size_t c = 0; c < srcsz; ++c)
 		dst[msgsz+1+c] = src[c];
 
 	dst[msgsz+1+srcsz] = RTDE_EXCEPTION_MESSAGE;
+#pragma GCC diagnostic pop
+
 	return true;
 }
 

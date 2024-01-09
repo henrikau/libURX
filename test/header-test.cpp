@@ -278,8 +278,11 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
 
     std::string pl2 = "DOUBLE,VECTOR6D,NOT_FOUND,INT32";
-    payload[0] = 0;
-    strncat(dst, pl2.c_str(), pl2.length()+1);
+
+    // dst is 2048k sans headers, pl2 is much smaller in our case, don't
+    // worry about strncat()
+    strcat(dst, pl2.c_str());
+
     resp->hdr.size = htons(sizeof(*resp) + pl2.length()-1);
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
 
@@ -290,7 +293,11 @@ BOOST_AUTO_TEST_CASE(test_data_not_found)
     dst = (char *)resp + sizeof(struct rtde_header) + sizeof(uint8_t);
     payload[0] = 0;
     resp->recipe_id = 1;
-    strncat(dst, pl3.c_str(), pl3.length() + 1);
+
+    // dst is 2048k sans headers, pl2 is much smaller in our case, don't
+    // worry about strncat()
+    strcat(dst, pl3.c_str());
+
     resp->hdr.size = htons(sizeof(*resp) + pl3.length());
     BOOST_CHECK(!rtde_control_package_resp_validate(resp));
     free(resp);
