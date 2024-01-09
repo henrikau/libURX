@@ -66,17 +66,18 @@ int urx::Con::do_send(void *sbuf, int ssz)
 int urx::Con::do_recv(void *rbuf, int rsz, unsigned long *rx_ts)
 {
     struct sockaddr src_addr;
-    socklen_t addrlen;
+    socklen_t addrlen = sizeof(struct sockaddr);
+
     if (!rbuf)
         return -2;
 
-    auto read_sz = recvfrom(sock_, rbuf, rsz, 0, &src_addr, &addrlen);
+    ssize_t read_sz = recvfrom(sock_, rbuf, rsz, 0, &src_addr, &addrlen);
     if (rx_ts)
         *rx_ts = duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     if (read_sz < 0) {
-        printf("\nsock_=%d, rbuf=%p, rsz=%d\n", sock_, rbuf, rsz);
-        perror("recvfrom failed!");
+        printf("recvfrom() failed! sock_=%d, rbuf=%p, rsz=%d, res=%zd (errno=%d %s)\n",
+               sock_, rbuf, rsz, read_sz, errno, strerror(errno));
         return read_sz;
     }
 
