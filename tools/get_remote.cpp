@@ -30,7 +30,7 @@ void write_file(const char *fname, std::vector<std::tuple<unsigned long,double>>
 void usage(const char *argv0)
 {
     std::cout << "Usage: " << std::endl;
-    std::cout << argv0 << "-i UR_Controller_IPv4 -c CSV_File -l loops [-h help]" << std::endl;
+    std::cout << argv0 << " -i UR_Controller_IPv4 -c CSV_File -l loops [-h help]" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
     std::vector<std::tuple<unsigned long, double>> ts_set;
     for (int ctr = 0; ctr < loopctr; ctr++) {
         if (h.recv()) {
+            // printf("[%06d] %6.3f ms %lu\n", ctr, ur_ts, ts_ns);
             ts_set.push_back(std::tuple<unsigned long, double>(ts_ns, ur_ts));
         }
     }
