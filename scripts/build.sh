@@ -70,11 +70,7 @@ do_cmake ()
 {
     pushd "${BUILDPATH}" > /dev/null
     cmake .. \
-	  -DCMAKE_INSTALL_PREFIX="${INSTALLPATH}" \
-	  -DCMAKE_INSTALL_INCLUDEDIR="${INSTALLPATH}" \
-	  -DCMAKE_INSTALL_LIBDIR=lib \
-	  -DALT_LIBS="external/usr" \
-	  -DEXAMPLES=ON
+	  -DCMAKE_INSTALL_PREFIX="${INSTALLPATH}"
 
     popd > /dev/null
 }

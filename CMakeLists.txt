@@ -8,7 +8,6 @@ set (PROJECT_LICENSE "MPLv2")
 set (PROJECT_VERSION "1.0")
 
 option(BUILD_TESTS    "Build tests and emulators" ON)
-option(ALT_LIBS  "Alternative location for libraries" OFF)
 enable_testing ()
 
 include (CheckCXXCompilerFlag REQUIRED)
